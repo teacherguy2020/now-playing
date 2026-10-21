@@ -104,7 +104,7 @@ test('diagnostics playback rejects MPD controls while Qobuz owns the renderer', 
   const response = createResponse();
   await app.routes.get('POST /config/diagnostics/playback')?.({
     headers: {},
-    body: { action: 'toggle' },
+    body: { action: 'repeat-mode', mode: 'all' },
     query: {},
   }, response);
 
@@ -113,4 +113,60 @@ test('diagnostics playback rejects MPD controls while Qobuz owns the renderer', 
   assert.equal(response.body.unavailable, true);
   assert.equal(response.body.source, 'qobuz-connect');
   assert.match(response.body.error, /Qobuz Connect/);
+});
+
+test('diagnostics playback selects exact MPD repeat modes and reads them back', async () => {
+  const app = createApp();
+  const state = { random: 'off', repeat: 'off', single: 'off' };
+  const calls = [];
+  registerConfigDiagnosticsRoutes(app, {
+    requireTrackKey: () => true,
+    getRatingForFile: async () => null,
+    setRatingForFile: async () => {},
+    getAlexaWasPlaying: () => null,
+    clearAlexaWasPlayingState: async () => {},
+    setAlexaModeState: async () => null,
+    getYoutubeNowPlayingHint: () => null,
+    getYoutubeQueueHint: () => null,
+    runMpc: async (args) => {
+      calls.push(args);
+      const command = args[2];
+      if (command === 'single' || command === 'repeat') state[command] = args[3];
+      if (command === 'status') {
+        return {
+          stdout: `random: ${state.random}\nrepeat: ${state.repeat}\nsingle: ${state.single}\n`,
+        };
+      }
+      return { stdout: '' };
+    },
+  });
+  const route = app.routes.get('POST /config/diagnostics/playback');
+
+  for (const [mode, expectedCommands] of [
+    ['off', [['single', 'off'], ['repeat', 'off'], ['status']]],
+    ['all', [['single', 'off'], ['repeat', 'on'], ['status']]],
+    ['one', [['repeat', 'on'], ['single', 'on'], ['status']]],
+  ]) {
+    const response = createResponse();
+    await route({ headers: {}, body: { action: 'repeat-mode', mode }, query: {} }, response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+      ok: true,
+      action: 'repeat-mode',
+      mode,
+      repeatMode: mode,
+      randomOn: false,
+      repeatOn: mode !== 'off',
+      singleOn: mode === 'one',
+      status: `random: off\nrepeat: ${mode === 'off' ? 'off' : 'on'}\nsingle: ${mode === 'one' ? 'on' : 'off'}\n`,
+    });
+    assert.deepEqual(calls.slice(-3).map((args) => args.slice(2)), expectedCommands);
+  }
+
+  const beforeInvalid = calls.length;
+  const invalid = createResponse();
+  await route({ headers: {}, body: { action: 'repeat-mode', mode: 'toggle' }, query: {} }, invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(invalid.body.code, 'REPEAT_MODE_INVALID');
+  assert.equal(calls.length, beforeInvalid);
 });

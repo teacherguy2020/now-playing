@@ -253,13 +253,17 @@ artist/title candidates are resolved through the canonical mobile catalog.
 
 The native watcher does not call `GET` or `POST /v1/mobile/endless-vibe`, so
 turning it on cannot enable or disable the shared Home moOde/MPD watcher. The
-Server now also exposes `POST /v1/mobile/queue-wizard/vibe` with a canonical
-`trackId` seed and bearer authentication for the pending native migration.
-The current iOS watcher still reuses the existing Track-Key-protected seeded
-Vibe preview for recommendations until that separate iOS migration is made;
-the server remains the Last.fm/index and catalog authority while playback and
-queue ownership remain native. Last.fm write credentials are not copied into
-the app.
+Server exposes two separate bearer contracts for native migration:
+`POST /v1/mobile/queue-wizard/vibe` creates the Home Queue Wizard job, while
+`POST /v1/mobile/vibe/preview` invokes the existing dry-run Vibe engine and
+returns only candidates resolved to canonical mobile track IDs. The preview
+does not mutate the Home queue/playback or any Qobuz, UPnP, saved-queue, or
+physical-shuffle state. The current iOS watcher still reuses the existing
+Track-Key-protected seeded Vibe preview until that separate iOS migration is
+made; this Server-only change does not alter the iOS repository. The Server
+remains the Last.fm/index and catalog authority while playback and queue
+ownership remain native. Last.fm write credentials are not copied into the
+app.
 
 ## Relationship to other pages
 
@@ -286,4 +290,4 @@ This page now gives the wiki a sharper internal model of Queue Wizard:
 - Add to Playlist, collage, and Vibe remain explicit server-side operations;
   the native client does not receive raw MPD paths or Track Keys
 
-_Last updated: 2026-10-20 19:25 America/Chicago_
+_Last updated: 2026-10-20 22:51 America/Chicago_

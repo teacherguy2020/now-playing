@@ -615,7 +615,10 @@ Core families currently used by the native client:
 - `GET /v1/mobile/now-playing`, `GET /v1/mobile/next-up`,
   `GET /v1/mobile/audio-info`, and bearer current-track favorite/rating writes;
 - `POST /v1/mobile/now-playing/control` for Home moOde transport and
-  `POST /v1/mobile/queue-wizard/vibe` for explicit canonical-ID Vibe seeds;
+  `POST /v1/mobile/queue-wizard/vibe` for explicit canonical-ID Home Vibe
+  jobs;
+- `POST /v1/mobile/vibe/preview` for non-mutating native-device Vibe
+  recommendations;
 - `GET /v1/mobile/home/rows` and `POST /v1/mobile/home/profile` for the
   twelve ordered Home discovery sources;
 - playlists, ordered entries, playlist artwork, and
@@ -645,20 +648,30 @@ and accepts exactly one typed action body:
 {"action":"next"}
 {"action":"previous"}
 {"action":"repeat"}
+{"action":"repeatMode","mode":"off"}
+{"action":"repeatMode","mode":"all"}
+{"action":"repeatMode","mode":"one"}
 {"action":"seekRelative","seconds":-30}
 {"action":"seekPercent","percent":50}
 ```
 
 Relative seek is a non-zero integer in `-600..600`; percentage seek is a
-finite number in `0..100` and is rounded to a whole percentage. The response
-contains only `ok`, the normalized action, the requested seek value where
-applicable, and the verified `repeatOn` boolean for repeat. The route calls
-the existing `/config/diagnostics/playback` authority internally, so it does
-not accept a raw MPD path, renderer URL, or `x-track-key` credential and it
-does not release Qobuz. An active Qobuz owner returns `409` with
-`HOME_PLAYBACK_OWNERSHIP_CONFLICT`; callers must use the explicit mobile
-Qobuz release contract before retrying a Home action. Existing web/controller
-routes are retained.
+finite number in `0..100` and is rounded to a whole percentage. The legacy
+`repeat` action remains a toggle. `repeatMode` selects exactly `off`, `all`, or
+`one` and returns the authoritative `mode`/`repeatMode`, `repeatOn`, and
+`singleOn` readback. Its MPD mappings are respectively `single off` +
+`repeat off`, `single off` + `repeat on`, and `repeat on` + `single on`.
+`repeat-mode` remains an accepted compatibility spelling. Invalid modes return
+`400` `MOBILE_REPEAT_MODE_INVALID_REQUEST`; an authoritative readback mismatch
+returns `502` `MOBILE_REPEAT_MODE_READBACK_MISMATCH`.
+
+The route calls the existing `/config/diagnostics/playback` authority
+internally, so it does not accept a raw MPD path, renderer URL, or `x-track-key`
+credential and it does not release or take over Qobuz Connect or Sonuvi UPnP.
+An active Qobuz or UPnP owner returns `409`
+`HOME_PLAYBACK_OWNERSHIP_CONFLICT` with the source-specific owner; callers
+must use the explicit mobile ownership contract before retrying a Home action.
+Existing web/controller routes are retained.
 
 `POST /v1/mobile/queue-wizard/vibe` retains its current-track compatibility
 adapter and additionally accepts the explicit canonical form:
@@ -671,6 +684,27 @@ the artist/title seed, and calls the existing Queue Wizard seeded builder.
 only `ok`, `accepted`, `jobId`, `trackId`, and `targetQueue`. Artist/title
 text, files, MPD IDs, renderer URLs, and Track Keys are not accepted from the
 mobile caller.
+
+`POST /v1/mobile/vibe/preview` is a separate `200` native-device contract:
+
+```json
+{"trackId":"trk_opaque_id","targetQueue":12}
+```
+
+It resolves the canonical seed, invokes the existing Vibe engine's dry-run
+path, and maps returned candidates to canonical catalog tracks by exact
+server-side file identity. It returns `kind: "native-device-vibe-preview"`,
+`count`, `unresolvedCount`, `catalogBuiltAt`, and safe `tracks` without file
+paths or raw engine rows. Each track uses the existing sanitized mobile-track
+DTO; `catalogBuiltAt` is the catalog timestamp or `null`. It never creates a
+Home Queue Wizard job, mutates MPD/playback, changes
+saved queues or physical shuffle state, releases Qobuz, or takes over UPnP.
+Unresolved candidates are omitted; if none map to canonical IDs the route
+returns `422` `MOBILE_VIBE_PREVIEW_UNRESOLVED`. Invalid requests, unknown or
+ineligible seeds, timeouts, and engine failures return respectively
+`400 MOBILE_VIBE_PREVIEW_INVALID_REQUEST`, `404 MOBILE_TRACK_NOT_FOUND`,
+`400 MOBILE_VIBE_INELIGIBLE_TRACK`, `504 MOBILE_VIBE_PREVIEW_TIMEOUT`, and
+sanitized `502 MOBILE_VIBE_PREVIEW_FAILED`.
 
 `POST /v1/mobile/queue/actions` adds the physical `undoshuffle` action beside
 `shuffle` and `shufflequeue`. It delegates to the same guarded diagnostics
@@ -773,4 +807,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-10-20 19:25 America/Chicago
+Last updated: 2026-10-20 22:51 America/Chicago

@@ -688,6 +688,10 @@ export function registerMobileRoutes(app, deps = {}) {
     || qobuzConnectReleaseDefaults.timeoutMs;
   const qobuzReleasePollMs = Number(deps.qobuzReleasePollMs)
     || qobuzConnectReleaseDefaults.pollMs;
+  const configuredVibePreviewTimeoutMs = Number(deps.vibePreviewTimeoutMs);
+  const vibePreviewTimeoutMs = Number.isFinite(configuredVibePreviewTimeoutMs) && configuredVibePreviewTimeoutMs > 0
+    ? configuredVibePreviewTimeoutMs
+    : 45_000;
   const enrichRadioMetadata = typeof deps.enrichRadioMetadata === 'function'
     ? deps.enrichRadioMetadata
     : null;
@@ -2138,6 +2142,41 @@ export function registerMobileRoutes(app, deps = {}) {
     };
   };
 
+  const mobileVibePreviewOptions = (body) => {
+    if (!isPlainObject(body)) return { error: 'request body must be an object' };
+    const allowed = new Set(['trackId', 'targetQueue']);
+    if (Object.keys(body).some((key) => !allowed.has(key))) {
+      return { error: 'unsupported Vibe preview request field' };
+    }
+
+    const trackId = text(body.trackId);
+    if (!trackId || trackId.length > 256) return { error: 'trackId is required' };
+
+    const targetQueue = body.targetQueue === undefined ? 25 : body.targetQueue;
+    if (!Number.isInteger(targetQueue) || targetQueue < 1 || targetQueue > 200) {
+      return { error: 'targetQueue must be an integer from 1 to 200' };
+    }
+
+    return { trackId, targetQueue };
+  };
+
+  const withTimeout = async (promise, timeoutMs, code) => {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const error = new Error(code);
+        error.code = code;
+        reject(error);
+      }, timeoutMs);
+      timer.unref?.();
+    });
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const mobileInternalFailure = (res, result, fallback, code = 'MOBILE_FEATURE_FAILED') => {
     const status = Number(result?.status);
     if (status === 409 && text(result?.json?.source).toLocaleLowerCase() === 'qobuz-connect') {
@@ -2146,6 +2185,14 @@ export function registerMobileRoutes(app, deps = {}) {
         error: 'Home playback is owned by Qobuz Connect; release Qobuz before controlling Home playback',
         code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
         source: 'qobuz-connect',
+      });
+    }
+    if (status === 409 && text(result?.json?.source).toLocaleLowerCase() === 'upnp-sonuvi') {
+      return res.status(409).json({
+        ok: false,
+        error: 'Home playback is owned by Sonuvi UPnP; use the UPnP mobile contract before controlling Home playback',
+        code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+        source: 'upnp-sonuvi',
       });
     }
     const safeStatus = status === 400 || status === 404 || status === 409 ? status : 502;
@@ -3339,6 +3386,85 @@ export function registerMobileRoutes(app, deps = {}) {
     return res.json({ ok: true, ...result });
   }));
 
+  app.post('/v1/mobile/vibe/preview', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile Vibe preview is not configured');
+
+    const options = mobileVibePreviewOptions(req?.body);
+    if (options.error) {
+      return errorResponse(res, 400, options.error, 'MOBILE_VIBE_PREVIEW_INVALID_REQUEST');
+    }
+
+    const catalog = await loadCatalog();
+    const seedTrack = catalog.byTrackId.get(options.trackId);
+    if (!seedTrack) return errorResponse(res, 404, 'track not found', 'MOBILE_TRACK_NOT_FOUND');
+
+    const seed = mobileVibeSeedForCatalogTrack(seedTrack);
+    if (!seed) return errorResponse(res, 400, 'track is not eligible for Vibe', 'MOBILE_VIBE_INELIGIBLE_TRACK');
+
+    let result;
+    try {
+      result = await withTimeout(
+        Promise.resolve().then(() => internalFeatureRequest('/config/queue-wizard/vibe-seed', {
+          method: 'POST',
+          body: {
+            targetQueue: options.targetQueue,
+            seedArtist: seed.artist,
+            seedTitle: seed.title,
+          },
+        })),
+        vibePreviewTimeoutMs,
+        'MOBILE_VIBE_PREVIEW_TIMEOUT',
+      );
+    } catch (error) {
+      if (error?.code === 'MOBILE_VIBE_PREVIEW_TIMEOUT') {
+        return errorResponse(res, 504, 'Vibe preview timed out', 'MOBILE_VIBE_PREVIEW_TIMEOUT');
+      }
+      return errorResponse(res, 502, 'Vibe preview unavailable', 'MOBILE_VIBE_PREVIEW_FAILED');
+    }
+
+    if (!result?.ok) {
+      return errorResponse(res, 502, 'Vibe preview unavailable', 'MOBILE_VIBE_PREVIEW_FAILED');
+    }
+
+    const resolvedTracks = [];
+    const seenTrackIds = new Set();
+    let unresolvedCount = 0;
+    const rawTracks = Array.isArray(result?.json?.tracks) ? result.json.tracks : [];
+    for (const row of rawTracks) {
+      const track = catalog.byFile.get(text(row?.file));
+      if (!track) {
+        unresolvedCount += 1;
+        continue;
+      }
+      if (seenTrackIds.has(track.id)) continue;
+      seenTrackIds.add(track.id);
+      resolvedTracks.push(track);
+    }
+
+    if (!resolvedTracks.length) {
+      return errorResponse(
+        res,
+        422,
+        'Vibe returned no canonical catalog tracks',
+        'MOBILE_VIBE_PREVIEW_UNRESOLVED',
+      );
+    }
+
+    return res.json({
+      ok: true,
+      kind: 'native-device-vibe-preview',
+      trackId: options.trackId,
+      targetQueue: options.targetQueue,
+      count: resolvedTracks.length,
+      unresolvedCount,
+      tracks: resolvedTracks.map((track) => publicMobileTrack(track, {
+        baseUrl: requestBaseUrl(req, mobileBaseUrl),
+      })),
+      catalogBuiltAt: text(catalog.builtAt) || null,
+    });
+  }));
+
   app.post('/v1/mobile/queue/items', asyncRoute(async (req, res) => {
     const session = requireSession(req, res);
     if (!session) return;
@@ -3719,6 +3845,8 @@ export function registerMobileRoutes(app, deps = {}) {
       next: { action: 'next', diagnosticsAction: 'next' },
       previous: { action: 'previous', diagnosticsAction: 'prev' },
       repeat: { action: 'repeat', diagnosticsAction: 'repeat' },
+      repeatmode: { action: 'repeatMode', diagnosticsAction: 'repeat-mode', field: 'mode' },
+      'repeat-mode': { action: 'repeatMode', diagnosticsAction: 'repeat-mode', field: 'mode' },
       seekrelative: { action: 'seekRelative', diagnosticsAction: 'seekrel', field: 'seconds' },
       seekpercent: { action: 'seekPercent', diagnosticsAction: 'seekpct', field: 'percent' },
     };
@@ -3727,7 +3855,7 @@ export function registerMobileRoutes(app, deps = {}) {
       return errorResponse(
         res,
         400,
-        'action must be play, pause, stop, next, previous, repeat, seekRelative, or seekPercent',
+        'action must be play, pause, stop, next, previous, repeat, repeatMode, seekRelative, or seekPercent',
         'MOBILE_CONTROL_INVALID_REQUEST',
       );
     }
@@ -3760,6 +3888,16 @@ export function registerMobileRoutes(app, deps = {}) {
         );
       }
       parameter = Math.round(value);
+    } else if (definition.field === 'mode') {
+      if (!['off', 'all', 'one'].includes(req.body.mode)) {
+        return errorResponse(
+          res,
+          400,
+          'mode must be off, all, or one',
+          'MOBILE_REPEAT_MODE_INVALID_REQUEST',
+        );
+      }
+      parameter = req.body.mode;
     }
 
     const diagnosticsBody = { action: definition.diagnosticsAction };
@@ -3769,11 +3907,15 @@ export function registerMobileRoutes(app, deps = {}) {
       body: diagnosticsBody,
     });
     if (!result?.ok) {
+      const failureCode = definition.field === 'mode'
+        && text(result?.json?.code) === 'REPEAT_MODE_READBACK_MISMATCH'
+        ? 'MOBILE_REPEAT_MODE_READBACK_MISMATCH'
+        : 'MOBILE_CONTROL_FAILED';
       return mobileInternalFailure(
         res,
         result,
         'Home playback control failed',
-        'MOBILE_CONTROL_FAILED',
+        failureCode,
       );
     }
 
@@ -3782,7 +3924,21 @@ export function registerMobileRoutes(app, deps = {}) {
       action: definition.action,
     };
     if (typeof result?.json?.repeatOn === 'boolean') response.repeatOn = result.json.repeatOn;
-    if (definition.field) response[definition.field] = parameter;
+    if (typeof result?.json?.singleOn === 'boolean') response.singleOn = result.json.singleOn;
+    if (definition.field === 'mode') {
+      const authoritativeMode = text(result?.json?.repeatMode);
+      if (!['off', 'all', 'one'].includes(authoritativeMode) || authoritativeMode !== parameter) {
+        return errorResponse(
+          res,
+          502,
+          'Home repeat mode readback did not match the requested mode',
+          'MOBILE_REPEAT_MODE_READBACK_MISMATCH',
+        );
+      }
+      response.mode = authoritativeMode;
+      response.repeatMode = authoritativeMode;
+    }
+    if (definition.field && definition.field !== 'mode') response[definition.field] = parameter;
     return res.json(response);
   }));
 

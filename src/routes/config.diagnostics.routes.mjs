@@ -270,8 +270,12 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     getYoutubeQueueHint,
     getSourceAudio,
     getQobuzNowPlaying,
+    runMpc,
   } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
+  const executeMpc = typeof runMpc === 'function'
+    ? runMpc
+    : (args, options) => execFileP('mpc', args, options);
 
   function pos0FromAlexaToken(tokenRaw) {
     const s = String(tokenRaw || '').trim();
@@ -826,7 +830,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const qobuzUnavailableActions = new Set([
         'play', 'pause', 'toggle', 'toggle_play_pause', 'next', 'prev', 'previous', 'stop',
         'seek', 'seekcur', 'seekpct', 'shuffle', 'shufflequeue', 'undoshuffle',
-        'repeat', 'consume', 'crossfade',
+        'repeat', 'repeat-mode', 'consume', 'crossfade',
       ]);
 
       if (qobuzUnavailableActions.has(action) && typeof getQobuzNowPlaying === 'function') {
@@ -901,6 +905,52 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
         return res.json({ ok: true, action, randomOn, repeatOn, undoAvailable: false, status: String(afterStatus || '') });
+      }
+
+      if (action === 'repeat-mode') {
+        const mode = req.body?.mode;
+        if (!['off', 'all', 'one'].includes(mode)) {
+          return res.status(400).json({
+            ok: false,
+            error: 'mode must be off, all, or one',
+            code: 'REPEAT_MODE_INVALID',
+          });
+        }
+
+        const commands = {
+          off: [['single', 'off'], ['repeat', 'off']],
+          all: [['single', 'off'], ['repeat', 'on']],
+          one: [['repeat', 'on'], ['single', 'on']],
+        }[mode];
+        for (const command of commands) {
+          await executeMpc(['-h', mpdHost, ...command]);
+        }
+
+        const { stdout: afterStatus } = await executeMpc(['-h', mpdHost, 'status']);
+        const status = String(afterStatus || '');
+        const randomOn = /random:\s*on/i.test(status);
+        const repeatOn = /repeat:\s*on/i.test(status);
+        const singleOn = /single:\s*on/i.test(status);
+        const repeatMode = singleOn ? 'one' : (repeatOn ? 'all' : 'off');
+        if (repeatMode !== mode) {
+          return res.status(502).json({
+            ok: false,
+            error: 'MPD repeat mode readback did not match the requested mode',
+            code: 'REPEAT_MODE_READBACK_MISMATCH',
+            requestedMode: mode,
+            repeatMode,
+          });
+        }
+        return res.json({
+          ok: true,
+          action,
+          mode: repeatMode,
+          repeatMode,
+          randomOn,
+          repeatOn,
+          singleOn,
+          status,
+        });
       }
 
       if (action === 'repeat') {

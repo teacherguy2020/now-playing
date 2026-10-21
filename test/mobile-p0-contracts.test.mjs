@@ -104,7 +104,12 @@ test('Home mobile controls require bearer auth and use the typed diagnostics bri
       return {
         ok: true,
         status: 200,
-        json: { ok: true, repeatOn: options.body?.action === 'repeat' },
+        json: {
+          ok: true,
+          repeatOn: options.body?.action === 'repeat' || options.body?.mode === 'all' || options.body?.mode === 'one',
+          singleOn: options.body?.mode === 'one',
+          repeatMode: options.body?.action === 'repeat-mode' ? options.body.mode : null,
+        },
       };
     },
   });
@@ -134,6 +139,7 @@ test('Home mobile controls require bearer auth and use the typed diagnostics bri
     [{ action: 'next' }, { action: 'next' }],
     [{ action: 'previous' }, { action: 'prev' }],
     [{ action: 'repeat' }, { action: 'repeat' }],
+    [{ action: 'repeatMode', mode: 'all' }, { action: 'repeat-mode', mode: 'all' }],
     [{ action: 'seekRelative', seconds: -30 }, { action: 'seekrel', seconds: -30 }],
     [{ action: 'seekPercent', percent: 37.5 }, { action: 'seekpct', percent: 38 }],
   ];
@@ -145,6 +151,11 @@ test('Home mobile controls require bearer auth and use the typed diagnostics bri
     assert.equal(response.body.ok, true);
     assert.equal(response.body.action, body.action);
     if (body.action === 'repeat') assert.equal(response.body.repeatOn, true);
+    if (body.action === 'repeatMode') {
+      assert.equal(response.body.mode, body.mode);
+      assert.equal(response.body.repeatMode, body.mode);
+      assert.equal(response.body.singleOn, false);
+    }
     if (body.action === 'seekRelative') assert.equal(response.body.seconds, -30);
     if (body.action === 'seekPercent') assert.equal(response.body.percent, 38);
     assert.deepEqual(calls.at(-1), {
@@ -205,6 +216,123 @@ test('Home mobile seek bounds and Qobuz ownership fail closed without releasing 
     options: { method: 'POST', body: { action: 'pause' } },
   }]);
   assert.equal(calls.some(({ pathname }) => pathname.includes('release')), false);
+
+  const repeatConflict = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { action: 'repeatMode', mode: 'one' },
+  }), repeatConflict);
+  assert.equal(repeatConflict.statusCode, 409);
+  assert.deepEqual(repeatConflict.body, {
+    ok: false,
+    error: 'Home playback is owned by Qobuz Connect; release Qobuz before controlling Home playback',
+    code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+    source: 'qobuz-connect',
+  });
+  assert.deepEqual(calls.at(-1), {
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'repeat-mode', mode: 'one' } },
+  });
+});
+
+test('Home mobile repeat mode validates exact modes and preserves authoritative readback', async () => {
+  const calls = [];
+  const app = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return {
+        ok: true,
+        status: 200,
+        json: {
+          ok: true,
+          repeatMode: options.body?.mode,
+          repeatOn: options.body?.mode !== 'off',
+          singleOn: options.body?.mode === 'one',
+        },
+      };
+    },
+  });
+  const route = app.routes.get('POST /v1/mobile/now-playing/control');
+
+  for (const mode of ['off', 'all', 'one']) {
+    const response = createResponse();
+    await route(request({
+      headers: sessionHeaders(),
+      body: { action: 'repeatMode', mode },
+    }), response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.mode, mode);
+    assert.equal(response.body.repeatMode, mode);
+    assert.equal(response.body.repeatOn, mode !== 'off');
+    assert.equal(response.body.singleOn, mode === 'one');
+    assert.deepEqual(calls.at(-1), {
+      pathname: '/config/diagnostics/playback',
+      options: { method: 'POST', body: { action: 'repeat-mode', mode } },
+    });
+  }
+
+  for (const body of [
+    { action: 'repeatMode', mode: 'toggle' },
+    { action: 'repeatMode', mode: 1 },
+    { action: 'repeatMode' },
+    { action: 'repeatMode', mode: 'all', rendererUrl: 'http://renderer.invalid' },
+  ]) {
+    const response = createResponse();
+    await route(request({ headers: sessionHeaders(), body }), response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.code, body.rendererUrl
+      ? 'MOBILE_CONTROL_INVALID_REQUEST'
+      : 'MOBILE_REPEAT_MODE_INVALID_REQUEST');
+  }
+
+  const mismatchApp = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async () => ({
+      ok: false,
+      status: 502,
+      json: { ok: false, code: 'REPEAT_MODE_READBACK_MISMATCH' },
+    }),
+  });
+  const mismatch = createResponse();
+  await mismatchApp.routes.get('POST /v1/mobile/now-playing/control')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'repeatMode', mode: 'all' },
+  }), mismatch);
+  assert.equal(mismatch.statusCode, 502);
+  assert.equal(mismatch.body.code, 'MOBILE_REPEAT_MODE_READBACK_MISMATCH');
+});
+
+test('Home mobile UPnP ownership blocks repeat mutations without exposing internal details', async () => {
+  const calls = [];
+  const app = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return {
+        ok: false,
+        status: 409,
+        json: {
+          ok: false,
+          source: 'upnp-sonuvi',
+          error: 'private UPnP ownership detail',
+        },
+      };
+    },
+  });
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/now-playing/control')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'repeatMode', mode: 'one' },
+  }), response);
+  assert.equal(response.statusCode, 409);
+  assert.deepEqual(response.body, {
+    ok: false,
+    error: 'Home playback is owned by Sonuvi UPnP; use the UPnP mobile contract before controlling Home playback',
+    code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+    source: 'upnp-sonuvi',
+  });
+  assert.deepEqual(calls, [{
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'repeat-mode', mode: 'one' } },
+  }]);
 });
 
 test('mobile Vibe resolves an explicit canonical trackId and preserves Queue Wizard seed options', async () => {
@@ -277,6 +405,106 @@ test('mobile Vibe resolves an explicit canonical trackId and preserves Queue Wiz
     },
   }]);
   assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|First\.mp3|Track Key/i);
+});
+
+test('native Vibe preview is bearer-only, canonical, and non-mutating', async () => {
+  const calls = [];
+  const app = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return {
+        ok: true,
+        status: 200,
+        json: {
+          tracks: [
+            { file: fixtureIndex().tracks[1].file, artist: 'Private', title: 'Raw title' },
+            { file: 'USB/SamsungMoode/Not-in-catalog.mp3', artist: 'Unknown', title: 'Unknown' },
+          ],
+        },
+      };
+    },
+  });
+  const route = app.routes.get('POST /v1/mobile/vibe/preview');
+  const catalog = buildMobileCatalog(fixtureIndex(), { trackIdSecret: 'track-secret-for-test' });
+  const seedTrackId = catalog.tracks[0].id;
+
+  const unauthorized = createResponse();
+  await route(request({ body: { trackId: seedTrackId } }), unauthorized);
+  assert.equal(unauthorized.statusCode, 401);
+  assert.deepEqual(calls, []);
+
+  const invalid = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { trackId: seedTrackId, playNow: true },
+  }), invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(invalid.body.code, 'MOBILE_VIBE_PREVIEW_INVALID_REQUEST');
+
+  const unknown = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { trackId: 'trk_not-in-catalog' },
+  }), unknown);
+  assert.equal(unknown.statusCode, 404);
+  assert.equal(unknown.body.code, 'MOBILE_TRACK_NOT_FOUND');
+
+  const response = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { trackId: seedTrackId, targetQueue: 12 },
+  }), response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.kind, 'native-device-vibe-preview');
+  assert.equal(response.body.trackId, seedTrackId);
+  assert.equal(response.body.targetQueue, 12);
+  assert.equal(response.body.count, 1);
+  assert.equal(response.body.unresolvedCount, 1);
+  assert.equal(response.body.tracks[0].id, catalog.tracks[1].id);
+  assert.equal(Object.hasOwn(response.body.tracks[0], 'file'), false);
+  assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|Second\.mp3|Raw title|Track Key/i);
+  assert.deepEqual(calls, [{
+    pathname: '/config/queue-wizard/vibe-seed',
+    options: {
+      method: 'POST',
+      body: {
+        targetQueue: 12,
+        seedArtist: 'Test Artist',
+        seedTitle: 'First',
+      },
+    },
+  }]);
+  assert.equal(calls.some(({ pathname }) => /apply|diagnostics\/playback|control|release|shuffle/.test(pathname)), false);
+});
+
+test('native Vibe preview fails safely for unresolved candidates and timeouts', async () => {
+  const catalog = buildMobileCatalog(fixtureIndex(), { trackIdSecret: 'track-secret-for-test' });
+  const seedTrackId = catalog.tracks[0].id;
+  const unresolvedApp = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async () => ({ ok: true, status: 200, json: { tracks: [{ file: 'missing.mp3' }] } }),
+  });
+  const unresolved = createResponse();
+  await unresolvedApp.routes.get('POST /v1/mobile/vibe/preview')?.(request({
+    headers: sessionHeaders(),
+    body: { trackId: seedTrackId },
+  }), unresolved);
+  assert.equal(unresolved.statusCode, 422);
+  assert.equal(unresolved.body.code, 'MOBILE_VIBE_PREVIEW_UNRESOLVED');
+
+  const timeoutApp = registerFixture(async () => 'OK\n', {
+    vibePreviewTimeoutMs: 5,
+    fetchInternalRequest: async () => new Promise((resolve) => {
+      setTimeout(() => resolve({ ok: true, status: 200, json: { tracks: [] } }), 25);
+    }),
+  });
+  const timeout = createResponse();
+  await timeoutApp.routes.get('POST /v1/mobile/vibe/preview')?.(request({
+    headers: sessionHeaders(),
+    body: { trackId: seedTrackId },
+  }), timeout);
+  assert.equal(timeout.statusCode, 504);
+  assert.equal(timeout.body.code, 'MOBILE_VIBE_PREVIEW_TIMEOUT');
 });
 
 test('the pre-existing current-track mobile Vibe adapter remains compatible', async () => {

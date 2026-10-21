@@ -44,10 +44,11 @@ routes and does not call raw `/mpd/*` or `/config/*` queue endpoints.
 | --- | --- | --- |
 | GET | `/v1/mobile/queue` | Read current MPD queue and state |
 | GET | `/v1/mobile/next-up` | Read the target-aware single Next Up item |
-| POST | `/v1/mobile/now-playing/control` | Home moOde transport: play, pause, stop, next, previous, repeat, and bounded seek |
+| POST | `/v1/mobile/now-playing/control` | Home moOde transport: play, pause, stop, next, previous, repeat/repeatMode, and bounded seek |
 | POST | `/v1/mobile/queue/items/:queueItemId/play` | Play one queue item on home moOde |
 | POST | `/v1/mobile/queue/items/:queueItemId/vibe` | Start a seeded Vibe from one eligible local queue item |
 | POST | `/v1/mobile/queue-wizard/vibe` | Start a seeded Vibe from a canonical `trackId` |
+| POST | `/v1/mobile/vibe/preview` | Return non-mutating native-device Vibe recommendations from a canonical `trackId` |
 | GET | `/v1/mobile/vibe/jobs/:jobId` | Read sanitized progress for a mobile-started Vibe job |
 | DELETE | `/v1/mobile/queue/items/:queueItemId` | Remove one item |
 | POST | `/v1/mobile/queue/items/:queueItemId/delete-below` | Keep the selected item and remove every later Home moOde queue item |
@@ -148,6 +149,60 @@ artist/title text, a file path, an MPD ID, a renderer URL, or a Track Key.
 The no-`trackId` form remains as a compatibility adapter for older mobile
 callers that seed from the current Home track; new native migration work must
 use the canonical-ID form.
+
+## Native-device Vibe preview
+
+Native-device Vibe recommendations use a separate non-mutating contract. This
+is not the Home Queue Wizard job endpoint above:
+
+```http
+POST /v1/mobile/vibe/preview
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"trackId":"trk_opaque_id","targetQueue":12}
+```
+
+The Server resolves the canonical `trackId`, derives the seed internally, and
+reuses the existing Vibe engine's dry-run path. The successful response is
+`200` and contains only canonical mobile track identities and safe metadata:
+
+```json
+{
+  "ok": true,
+  "kind": "native-device-vibe-preview",
+  "trackId": "trk_opaque_id",
+  "targetQueue": 12,
+  "count": 2,
+  "unresolvedCount": 0,
+  "tracks": [
+    {"id":"trk_recommendation_1","title":"Example","artist":"Example Artist"},
+    {"id":"trk_recommendation_2","title":"Another","artist":"Another Artist"}
+  ]
+}
+```
+
+Recommendation rows are mapped to the canonical catalog by their exact
+server-side library-file identity. The endpoint never falls back to an
+ambiguous title/artist match and never returns the file path. Unmapped rows
+are omitted and counted in `unresolvedCount`; if no returned row resolves to a
+canonical track, the response is `422` with
+`MOBILE_VIBE_PREVIEW_UNRESOLVED`. Invalid fields or bounds return `400`
+`MOBILE_VIBE_PREVIEW_INVALID_REQUEST`, an unknown seed returns `404`
+`MOBILE_TRACK_NOT_FOUND`, an ineligible stream/track returns `400`
+`MOBILE_VIBE_INELIGIBLE_TRACK`, and an engine timeout returns `504`
+`MOBILE_VIBE_PREVIEW_TIMEOUT`. Other engine failures return sanitized `502`
+`MOBILE_VIBE_PREVIEW_FAILED`.
+
+This preview does not create a Queue Wizard job, mutate the Home MPD queue,
+start Home playback, alter saved queues or physical shuffle state, release or
+take over Qobuz Connect, or take over UPnP. The mobile caller never sends a
+Track Key; the internal dry-run bridge remains server-only. `catalogBuiltAt`
+is the current catalog timestamp or `null`. Each `tracks` entry uses the
+existing safe mobile-track shape (`id`, `title`, `artist`, `albumArtist`,
+`album`, `albumId`, `artistId`, `trackNumber`, `genre`, `durationSec`,
+`format`, `musicBrainz`, `availability`, and bearer-protected `artworkUrl`,
+with optional `sourceAudio`).
 ## Next Up parity
 
 The native iPhone and CarPlay surfaces use `/v1/mobile/next-up` for the single
@@ -345,14 +400,15 @@ the device.
 ## Home moOde transport detail
 
 The P0 Server transport route is `POST /v1/mobile/now-playing/control`. It
-accepts `play`, `pause`, `stop`, `next`, `previous`, and repeat-toggle actions
+accepts `play`, `pause`, `stop`, `next`, `previous`, repeat-toggle, and
+explicit `repeatMode` actions (`off`, `all`, `one`)
 plus `seekRelative.seconds` in the inclusive range -600..600 and
 `seekPercent.percent` in the inclusive range 0..100. It delegates to the
 existing guarded Home playback authority, maps `previous` to the existing
 server-side `prev` action, and returns no raw command or status text. It
-returns `409 HOME_PLAYBACK_OWNERSHIP_CONFLICT` while Qobuz Connect owns the
-receiver; the client must use the explicit Qobuz release contract first.
-Existing Track-Key web/controller routes are retained.
+returns `409 HOME_PLAYBACK_OWNERSHIP_CONFLICT` while Qobuz Connect or Sonuvi
+UPnP owns the receiver; the client must use the explicit ownership-specific
+mobile contract first. Existing Track-Key web/controller routes are retained.
 
 ## Playback-target queue handoff
 
@@ -400,4 +456,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-20 19:25 America/Chicago*
+*Last reviewed: 2026-10-20 22:51 America/Chicago*
