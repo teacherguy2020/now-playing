@@ -229,7 +229,7 @@ If these are missing or pointed at an old host, domain checks fail and Alexa can
 
 ### Required reverse proxy routes (Caddy)
 At minimum:
-- `/now-playing`, `/alexa/*`, `/config*`, `/art/*`, etc. -> `127.0.0.1:3101` (Node API)
+- `/now-playing`, `/alexa/*`, `/config*`, `/v1/mobile*`, `/art/*`, etc. -> `127.0.0.1:3101` (Node API)
 - fallback `/` -> `127.0.0.1:8101` (web UI)
 - `/coverart.php*` + `/images/*` -> `IPOFYOURMOODEBOX:80` (moOde art)
 - `/stream*` -> `IPOFYOURMOODEBOX:8000` (moOde stream)
@@ -277,7 +277,7 @@ moode.YOURDOMAIN.com {
   }
 
   @node_api {
-    path /now-playing /next-up /favorites/toggle /queue/advance* /queue/play_item* /queue/mix* /mpd/* /track /track/* /art/* /_debug/* /alexa/* /podcasts* /rating* /config*
+    path /now-playing /next-up /favorites/toggle /queue/advance* /queue/play_item* /queue/mix* /mpd/* /track /track/* /art/* /_debug/* /alexa/* /podcasts* /rating* /config* /v1/mobile*
   }
   handle @node_api {
     reverse_proxy 127.0.0.1:3101 {

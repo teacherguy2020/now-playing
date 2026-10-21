@@ -220,6 +220,7 @@ import {
   HARMONY_DENON_DEVICE_ID, HARMONY_INPUT_PHONO, HARMONY_INPUT_AUX1
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
+import { handleMobileJsonError } from './src/lib/mobile-http.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
 import { radioDisplayName, radioStationNameForFile } from './src/lib/radio-display.mjs';
 import {
@@ -698,6 +699,7 @@ async function fetchMotherEarthMeta(entry) {
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(handleMobileJsonError);
 // Serve controller/static UI assets from repo root on the same API port.
 app.use(express.static(path.resolve('.')));
 app.get('/', (_req, res) => {
