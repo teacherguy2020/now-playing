@@ -166,6 +166,100 @@ test('Home mobile controls require bearer auth and use the typed diagnostics bri
   }
 });
 
+test('Home mobile Consume preserves the legacy toggle and supports typed authoritative state', async () => {
+  const calls = [];
+  const app = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      const setTo = options.body?.setTo;
+      return {
+        ok: true,
+        status: 200,
+        json: {
+          ok: true,
+          consumeOn: setTo ? setTo === 'on' : true,
+        },
+      };
+    },
+  });
+  const route = app.routes.get('POST /v1/mobile/now-playing/control');
+
+  const unauthorized = createResponse();
+  await route(request({
+    headers: { 'x-track-key': 'legacy-track-key' },
+    body: { action: 'consume', state: 'on' },
+  }), unauthorized);
+  assert.equal(unauthorized.statusCode, 401);
+  assert.deepEqual(calls, []);
+
+  for (const [state, consumeOn] of [['on', true], ['off', false]]) {
+    const response = createResponse();
+    await route(request({
+      headers: sessionHeaders(),
+      body: { action: 'consume', state },
+    }), response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+      ok: true,
+      action: 'consume',
+      state,
+      consumeOn,
+    });
+    assert.deepEqual(calls.at(-1), {
+      pathname: '/config/diagnostics/playback',
+      options: { method: 'POST', body: { action: 'consume', setTo: state } },
+    });
+  }
+
+  const toggle = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { action: 'consume' },
+  }), toggle);
+  assert.equal(toggle.statusCode, 200);
+  assert.deepEqual(toggle.body, {
+    ok: true,
+    action: 'consume',
+    state: 'on',
+    consumeOn: true,
+  });
+  assert.deepEqual(calls.at(-1), {
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'consume' } },
+  });
+
+  const callCountBeforeInvalid = calls.length;
+  for (const body of [
+    { action: 'consume', state: 'toggle' },
+    { action: 'consume', state: 1 },
+    { action: 'consume', state: null },
+    { action: 'consume', state: 'on', setTo: 'on' },
+  ]) {
+    const response = createResponse();
+    await route(request({ headers: sessionHeaders(), body }), response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.code, body.setTo
+      ? 'MOBILE_CONTROL_INVALID_REQUEST'
+      : 'MOBILE_CONSUME_STATE_INVALID_REQUEST');
+  }
+  assert.equal(calls.length, callCountBeforeInvalid);
+
+  const mismatchApp = registerFixture(async () => 'OK\n', {
+    fetchInternalRequest: async () => ({
+      ok: true,
+      status: 200,
+      json: { ok: true, consumeOn: false },
+    }),
+  });
+  const mismatch = createResponse();
+  await mismatchApp.routes.get('POST /v1/mobile/now-playing/control')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'consume', state: 'on' },
+  }), mismatch);
+  assert.equal(mismatch.statusCode, 502);
+  assert.equal(mismatch.body.code, 'MOBILE_CONSUME_READBACK_MISMATCH');
+});
+
 test('Home mobile seek bounds and Qobuz ownership fail closed without releasing Qobuz', async () => {
   const calls = [];
   const app = registerFixture(async () => 'OK\n', {
@@ -233,6 +327,24 @@ test('Home mobile seek bounds and Qobuz ownership fail closed without releasing 
     pathname: '/config/diagnostics/playback',
     options: { method: 'POST', body: { action: 'repeat-mode', mode: 'one' } },
   });
+
+  const consumeConflict = createResponse();
+  await route(request({
+    headers: sessionHeaders(),
+    body: { action: 'consume', state: 'on' },
+  }), consumeConflict);
+  assert.equal(consumeConflict.statusCode, 409);
+  assert.deepEqual(consumeConflict.body, {
+    ok: false,
+    error: 'Home playback is owned by Qobuz Connect; release Qobuz before controlling Home playback',
+    code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+    source: 'qobuz-connect',
+  });
+  assert.deepEqual(calls.at(-1), {
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'consume', setTo: 'on' } },
+  });
+  assert.equal(calls.some(({ pathname }) => pathname.includes('release')), false);
 });
 
 test('Home mobile repeat mode validates exact modes and preserves authoritative readback', async () => {
@@ -333,6 +445,23 @@ test('Home mobile UPnP ownership blocks repeat mutations without exposing intern
     pathname: '/config/diagnostics/playback',
     options: { method: 'POST', body: { action: 'repeat-mode', mode: 'one' } },
   }]);
+
+  const consumeResponse = createResponse();
+  await app.routes.get('POST /v1/mobile/now-playing/control')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'consume' },
+  }), consumeResponse);
+  assert.equal(consumeResponse.statusCode, 409);
+  assert.deepEqual(consumeResponse.body, {
+    ok: false,
+    error: 'Home playback is owned by Sonuvi UPnP; use the UPnP mobile contract before controlling Home playback',
+    code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+    source: 'upnp-sonuvi',
+  });
+  assert.deepEqual(calls.at(-1), {
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'consume' } },
+  });
 });
 
 test('mobile Vibe resolves an explicit canonical trackId and preserves Queue Wizard seed options', async () => {

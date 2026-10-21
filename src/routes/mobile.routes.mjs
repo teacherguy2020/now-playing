@@ -3845,6 +3845,7 @@ export function registerMobileRoutes(app, deps = {}) {
       next: { action: 'next', diagnosticsAction: 'next' },
       previous: { action: 'previous', diagnosticsAction: 'prev' },
       repeat: { action: 'repeat', diagnosticsAction: 'repeat' },
+      consume: { action: 'consume', diagnosticsAction: 'consume', field: 'state' },
       repeatmode: { action: 'repeatMode', diagnosticsAction: 'repeat-mode', field: 'mode' },
       'repeat-mode': { action: 'repeatMode', diagnosticsAction: 'repeat-mode', field: 'mode' },
       seekrelative: { action: 'seekRelative', diagnosticsAction: 'seekrel', field: 'seconds' },
@@ -3855,7 +3856,7 @@ export function registerMobileRoutes(app, deps = {}) {
       return errorResponse(
         res,
         400,
-        'action must be play, pause, stop, next, previous, repeat, repeatMode, seekRelative, or seekPercent',
+        'action must be play, pause, stop, next, previous, repeat, consume, repeatMode, seekRelative, or seekPercent',
         'MOBILE_CONTROL_INVALID_REQUEST',
       );
     }
@@ -3866,6 +3867,7 @@ export function registerMobileRoutes(app, deps = {}) {
     }
 
     let parameter = null;
+    let hasParameter = false;
     if (definition.field === 'seconds') {
       const value = req.body.seconds;
       if (!Number.isInteger(value) || value === 0 || value < -600 || value > 600) {
@@ -3898,10 +3900,30 @@ export function registerMobileRoutes(app, deps = {}) {
         );
       }
       parameter = req.body.mode;
+    } else if (definition.field === 'state') {
+      // The no-state form preserves the existing blind Consume toggle used by
+      // the legacy Home control. A supplied state makes the same operation
+      // deterministic for bearer-authenticated native callers.
+      if (req.body.state !== undefined) {
+        if (!['on', 'off'].includes(req.body.state)) {
+          return errorResponse(
+            res,
+            400,
+            'state must be on or off',
+            'MOBILE_CONSUME_STATE_INVALID_REQUEST',
+          );
+        }
+        parameter = req.body.state;
+        hasParameter = true;
+      }
     }
 
     const diagnosticsBody = { action: definition.diagnosticsAction };
-    if (definition.field) diagnosticsBody[definition.field] = parameter;
+    if (definition.field === 'state') {
+      if (hasParameter) diagnosticsBody.setTo = parameter;
+    } else if (definition.field) {
+      diagnosticsBody[definition.field] = parameter;
+    }
     const result = await internalFeatureRequest('/config/diagnostics/playback', {
       method: 'POST',
       body: diagnosticsBody,
@@ -3938,7 +3960,31 @@ export function registerMobileRoutes(app, deps = {}) {
       response.mode = authoritativeMode;
       response.repeatMode = authoritativeMode;
     }
-    if (definition.field && definition.field !== 'mode') response[definition.field] = parameter;
+    if (definition.field === 'state') {
+      const consumeOn = result?.json?.consumeOn;
+      if (typeof consumeOn !== 'boolean') {
+        return errorResponse(
+          res,
+          502,
+          'Home Consume state readback was unavailable',
+          'MOBILE_CONSUME_READBACK_MISMATCH',
+        );
+      }
+      const authoritativeState = consumeOn ? 'on' : 'off';
+      if (hasParameter && authoritativeState !== parameter) {
+        return errorResponse(
+          res,
+          502,
+          'Home Consume state readback did not match the requested state',
+          'MOBILE_CONSUME_READBACK_MISMATCH',
+        );
+      }
+      response.state = authoritativeState;
+      response.consumeOn = consumeOn;
+    }
+    if (definition.field && definition.field !== 'mode' && definition.field !== 'state') {
+      response[definition.field] = parameter;
+    }
     return res.json(response);
   }));
 

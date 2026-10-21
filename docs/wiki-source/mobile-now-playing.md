@@ -126,6 +126,9 @@ The request body is one of these forms:
 {"action":"next"}
 {"action":"previous"}
 {"action":"repeat"}
+{"action":"consume"}
+{"action":"consume","state":"on"}
+{"action":"consume","state":"off"}
 {"action":"repeatMode","mode":"off"}
 {"action":"repeatMode","mode":"all"}
 {"action":"repeatMode","mode":"one"}
@@ -138,28 +141,37 @@ The request body is one of these forms:
 Server rounds it to the whole percentage accepted by the existing playback
 authority. Unknown fields, raw MPD paths, renderer URLs, and Track-Key-only
 requests are rejected. `previous` is translated to the existing server-side
-`prev` action, and `repeat` toggles the existing Home repeat mode. The
-`repeatMode` action selects the mode deterministically: `off` means MPD
-`repeat off`/`single off`, `all` means `repeat on`/`single off`, and `one`
-means `repeat on`/`single on`. The legacy `repeat` toggle remains unchanged;
-`repeat-mode` is accepted as a compatibility spelling of `repeatMode`.
+`prev` action, and `repeat` toggles the existing Home repeat mode. `consume`
+without a `state` preserves the existing blind Consume toggle; when supplied,
+`state` must be exactly `on` or `off` and selects the Consume state
+deterministically. The `repeatMode` action selects its mode deterministically:
+`off` means MPD `repeat off`/`single off`, `all` means `repeat on`/`single off`,
+and `one` means `repeat on`/`single on`. The legacy `repeat` toggle remains
+unchanged; `repeat-mode` is accepted as a compatibility spelling of
+`repeatMode`.
 
 Success responses contain only the normalized action and safe state:
 
 ```json
 {"ok":true,"action":"seekRelative","seconds":-30}
 {"ok":true,"action":"repeat","repeatOn":true}
+{"ok":true,"action":"consume","state":"on","consumeOn":true}
 {"ok":true,"action":"repeatMode","mode":"one","repeatMode":"one","repeatOn":true,"singleOn":true}
 ```
 
-`repeatMode` responses include the authoritative MPD readback as `mode` and
-`repeatMode`, plus `repeatOn` and `singleOn`. Invalid modes return `400`
-`MOBILE_REPEAT_MODE_INVALID_REQUEST`; a failed authoritative readback returns
-`502` `MOBILE_REPEAT_MODE_READBACK_MISMATCH`.
+`consume` responses always include authoritative MPD readback as both
+normalized `state` and boolean `consumeOn`, including for the blind-toggle form.
+Invalid states return `400` `MOBILE_CONSUME_STATE_INVALID_REQUEST`; unavailable
+or mismatched authoritative readback returns `502`
+`MOBILE_CONSUME_READBACK_MISMATCH`. `repeatMode` responses include the
+authoritative MPD readback as `mode` and `repeatMode`, plus `repeatOn` and
+`singleOn`. Invalid modes return `400` `MOBILE_REPEAT_MODE_INVALID_REQUEST`; a
+failed authoritative readback returns `502`
+`MOBILE_REPEAT_MODE_READBACK_MISMATCH`.
 
 The route delegates to the existing guarded playback authority, so it does
 not release or take over Qobuz Connect or Sonuvi UPnP. If Qobuz owns playback,
-the response is `409` with
+the response for any Home mutation, including Consume, is `409` with
 `code: "HOME_PLAYBACK_OWNERSHIP_CONFLICT"` and
 `source: "qobuz-connect"`; the client must call the explicit
 `POST /v1/mobile/qobuz-connect/release` contract first and retry after
@@ -476,4 +488,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-20 22:51 America/Chicago*
+*Last reviewed: 2026-10-21 05:40 America/Chicago*

@@ -30,8 +30,9 @@ architecture without presenting that future as implemented.
 | Contract | Request | Current Server boundary |
 | --- | --- | --- |
 | Current state | `GET /v1/mobile/now-playing` | Source-aware sanitized Home state; inspect `source`, `isUpnp`, `isStream`, `isPodcast`, queue fields, and `track` rather than calling `/now-playing` directly |
-| Home transport | `POST /v1/mobile/now-playing/control` | Bearer-only typed Home play/pause/stop/next/previous/repeat and bounded relative/percentage seek; delegates to the guarded Server authority |
+| Home transport | `POST /v1/mobile/now-playing/control` | Bearer-only typed Home play/pause/stop/next/previous/repeat/consume and bounded relative/percentage seek; delegates to the guarded Server authority |
 | Home repeat mode | `POST /v1/mobile/now-playing/control` with `{"action":"repeatMode","mode":"off|all|one"}` | Deterministically selects MPD repeat/single state and returns authoritative mode readback; preserves the legacy repeat toggle |
+| Home Consume | `POST /v1/mobile/now-playing/control` with `{"action":"consume","state":"on|off"}` or `{"action":"consume"}` | Bearer-only deterministic or legacy-toggle Consume control; returns authoritative `state` and `consumeOn` readback without accepting a Track Key |
 | Next Up | `GET /v1/mobile/next-up` | Target-aware successor; Home moOde/Alexa and native-device queues do not share one inferred position |
 | Home queue | `GET /v1/mobile/queue` plus `/queue/items/:queueItemId/*` and `/queue/actions` | Bearer queue handles are opaque and current-snapshot scoped; mutations affect Home moOde/MPD only and require refresh after mutation |
 | Physical shuffle undo | `POST /v1/mobile/queue/actions` with `{"action":"undoshuffle"}` | Restores the guarded one-level physical upcoming-queue shuffle when the queue snapshot is still valid; returns a sanitized queue |
@@ -61,6 +62,9 @@ Content-Type: application/json
 {"action":"next"}
 {"action":"previous"}
 {"action":"repeat"}
+{"action":"consume"}
+{"action":"consume","state":"on"}
+{"action":"consume","state":"off"}
 {"action":"repeatMode","mode":"off"}
 {"action":"repeatMode","mode":"all"}
 {"action":"repeatMode","mode":"one"}
@@ -78,6 +82,11 @@ those modes to MPD `single off`/`repeat off`, `single off`/`repeat on`, and
 remains a toggle; `repeat-mode` is accepted as a compatibility spelling. An
 invalid mode returns `400 MOBILE_REPEAT_MODE_INVALID_REQUEST`; a readback
 mismatch returns `502 MOBILE_REPEAT_MODE_READBACK_MISMATCH`.
+`consume` without `state` preserves the existing blind toggle. When supplied,
+`state` strictly accepts only `on` or `off`; the response returns the
+authoritative normalized `state` and boolean `consumeOn`. Invalid state returns
+`400 MOBILE_CONSUME_STATE_INVALID_REQUEST`; unavailable or mismatched readback
+returns `502 MOBILE_CONSUME_READBACK_MISMATCH`.
 Responses contain no raw command, MPD path, renderer URL, or Track Key.
 
 The Home route delegates to the existing Server playback-authority guard. It
@@ -249,4 +258,4 @@ from `now-playing-ios/AGENTS.md`, `docs/architecture.md`, and
 - Confirm native progress events use stable session IDs and do not submit
   Last.fm credentials or duplicate scrobbles.
 
-*Prepared: 2026-10-20 22:51 America/Chicago*
+*Prepared: 2026-10-21 05:40 America/Chicago*
