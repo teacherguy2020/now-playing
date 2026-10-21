@@ -77,6 +77,10 @@ function text(value) {
   return String(value || '').trim();
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 function positiveAudioInfoInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -2096,9 +2100,62 @@ export function registerMobileRoutes(app, deps = {}) {
     return { artist, title };
   };
 
-  const queueResponse = (res, action, queue) => res.json({
+  const mobileVibeSeedForCatalogTrack = (track) => {
+    if (!track || !text(track.file) || isStreamFile(track.file) || isAirplayFile(track.file)) {
+      return null;
+    }
+    const artist = text(track.artist || track.albumArtist);
+    const title = text(track.title);
+    if (!artist || !title) return null;
+    return { artist, title };
+  };
+
+  const mobileVibeSeedOptions = (body) => {
+    if (!isPlainObject(body)) return { error: 'request body must be an object' };
+    const allowed = new Set(['trackId', 'targetQueue', 'playNow', 'keepPlaying']);
+    const unexpected = Object.keys(body).filter((key) => !allowed.has(key));
+    if (unexpected.length) return { error: 'unsupported Vibe request field' };
+
+    const trackId = text(body.trackId);
+    if (!trackId || trackId.length > 256) return { error: 'trackId is required' };
+
+    const targetQueue = body.targetQueue === undefined ? 25 : body.targetQueue;
+    if (!Number.isInteger(targetQueue) || targetQueue < 1 || targetQueue > 200) {
+      return { error: 'targetQueue must be an integer from 1 to 200' };
+    }
+    if (body.playNow !== undefined && typeof body.playNow !== 'boolean') {
+      return { error: 'playNow must be boolean' };
+    }
+    if (body.keepPlaying !== undefined && typeof body.keepPlaying !== 'boolean') {
+      return { error: 'keepPlaying must be boolean' };
+    }
+
+    return {
+      trackId,
+      targetQueue,
+      playNow: body.playNow === true,
+      keepPlaying: body.keepPlaying === true,
+    };
+  };
+
+  const mobileInternalFailure = (res, result, fallback, code = 'MOBILE_FEATURE_FAILED') => {
+    const status = Number(result?.status);
+    if (status === 409 && text(result?.json?.source).toLocaleLowerCase() === 'qobuz-connect') {
+      return res.status(409).json({
+        ok: false,
+        error: 'Home playback is owned by Qobuz Connect; release Qobuz before controlling Home playback',
+        code: 'HOME_PLAYBACK_OWNERSHIP_CONFLICT',
+        source: 'qobuz-connect',
+      });
+    }
+    const safeStatus = status === 400 || status === 404 || status === 409 ? status : 502;
+    return errorResponse(res, safeStatus, fallback, code);
+  };
+
+  const queueResponse = (res, action, queue, extra = {}) => res.json({
     ok: true,
     action,
+    ...extra,
     queue: {
       ...queue,
       count: queue.items.length,
@@ -3226,6 +3283,53 @@ export function registerMobileRoutes(app, deps = {}) {
 
   app.post('/v1/mobile/queue-wizard/vibe', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
+    const body = req?.body;
+
+    // Explicit mobile seeds resolve the canonical MobileTrack ID here and
+    // reuse the established server-side Queue Wizard seed job. The client
+    // never supplies artist/title, a file path, or the Track Key.
+    if (isPlainObject(body) && Object.prototype.hasOwnProperty.call(body, 'trackId')) {
+      if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile Vibe control is not configured');
+      const options = mobileVibeSeedOptions(body);
+      if (options.error) return errorResponse(res, 400, options.error, 'MOBILE_VIBE_INVALID_REQUEST');
+
+      const catalog = await loadCatalog();
+      const track = catalog.byTrackId.get(options.trackId);
+      if (!track) return errorResponse(res, 404, 'track not found', 'MOBILE_TRACK_NOT_FOUND');
+
+      const seed = mobileVibeSeedForCatalogTrack(track);
+      if (!seed) return errorResponse(res, 400, 'track is not eligible for Vibe', 'MOBILE_VIBE_INELIGIBLE_TRACK');
+
+      const result = await internalFeatureRequest('/config/queue-wizard/vibe-seed-start', {
+        method: 'POST',
+        body: {
+          targetQueue: options.targetQueue,
+          playNow: options.playNow,
+          keepPlaying: options.keepPlaying,
+          seedArtist: seed.artist,
+          seedTitle: seed.title,
+        },
+      });
+      if (!result?.ok) {
+        return mobileInternalFailure(
+          res,
+          result,
+          'Vibe could not be started',
+          'MOBILE_VIBE_START_FAILED',
+        );
+      }
+
+      const jobId = text(result?.json?.jobId);
+      if (!jobId) return errorResponse(res, 502, 'Vibe did not return a job ID', 'MOBILE_VIBE_START_FAILED');
+      return res.status(202).json({
+        ok: true,
+        accepted: true,
+        jobId,
+        trackId: options.trackId,
+        targetQueue: options.targetQueue,
+      });
+    }
+
     if (!startMobileVibe) return errorResponse(res, 501, 'mobile Vibe control is not configured');
     const result = await startMobileVibe({
       targetQueue: Math.max(1, Math.min(500, Number(req?.body?.targetQueue || 25) || 25)),
@@ -3538,8 +3642,11 @@ export function registerMobileRoutes(app, deps = {}) {
       return res.json({ ok: true, action, ...result });
     }
 
-    if (!['clear', 'crop', 'shuffle', 'shufflequeue'].includes(action)) {
+    if (!['clear', 'crop', 'shuffle', 'shufflequeue', 'undoshuffle'].includes(action)) {
       return errorResponse(res, 400, 'unsupported queue action');
+    }
+    if (action === 'undoshuffle' && Object.keys(req?.body || {}).some((key) => key !== 'action')) {
+      return errorResponse(res, 400, 'unsupported shuffle undo field', 'MOBILE_SHUFFLE_UNDO_INVALID_REQUEST');
     }
 
     // Reuse the web controller's reliable crop path. Raw MPD `crop` rejects
@@ -3564,20 +3671,29 @@ export function registerMobileRoutes(app, deps = {}) {
     // Shuffle always means a physical upcoming-queue reorder. This keeps the
     // visible queue and Alexa's next-track order aligned and never enables
     // Physical queue shuffle. Keep shufflequeue as a compatibility alias.
-    if (action === 'shuffle' || action === 'shufflequeue') {
+    if (action === 'shuffle' || action === 'shufflequeue' || action === 'undoshuffle') {
       if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile queue shuffle is not configured');
+      const diagnosticsAction = action === 'undoshuffle' ? 'undoshuffle' : 'shufflequeue';
       const reliableShuffle = await internalFeatureRequest('/config/diagnostics/playback', {
         method: 'POST',
-        body: { action: 'shufflequeue' },
+        body: { action: diagnosticsAction },
       });
       if (!reliableShuffle?.ok) {
-        return errorResponse(
+        return mobileInternalFailure(
           res,
-          Number(reliableShuffle?.status) || 502,
-          text(reliableShuffle?.json?.error) || 'MPD rejected queue action: shufflequeue',
+          reliableShuffle,
+          action === 'undoshuffle'
+            ? 'Queue shuffle undo is no longer available'
+            : 'MPD rejected queue action: shufflequeue',
+          action === 'undoshuffle' ? 'MOBILE_SHUFFLE_UNDO_FAILED' : 'MOBILE_SHUFFLE_FAILED',
         );
       }
-      return queueResponse(res, 'shuffle', await loadMobileQueue(req));
+      return queueResponse(
+        res,
+        action === 'shufflequeue' ? 'shuffle' : action,
+        await loadMobileQueue(req),
+        { undoAvailable: reliableShuffle?.json?.undoAvailable === true },
+      );
     }
 
     const result = await mpdQueryRaw(action);
@@ -3585,6 +3701,89 @@ export function registerMobileRoutes(app, deps = {}) {
       return errorResponse(res, action === 'crop' ? 409 : 502, `MPD rejected queue action: ${action}`);
     }
     return queueResponse(res, action, await loadMobileQueue(req));
+  }));
+
+  app.post('/v1/mobile/now-playing/control', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile Home playback control is not configured');
+    if (!isPlainObject(req?.body)) {
+      return errorResponse(res, 400, 'request body must be an object', 'MOBILE_CONTROL_INVALID_REQUEST');
+    }
+
+    const requestedAction = text(req.body.action);
+    const actionKey = requestedAction.toLocaleLowerCase();
+    const definitions = {
+      play: { action: 'play', diagnosticsAction: 'play' },
+      pause: { action: 'pause', diagnosticsAction: 'pause' },
+      stop: { action: 'stop', diagnosticsAction: 'stop' },
+      next: { action: 'next', diagnosticsAction: 'next' },
+      previous: { action: 'previous', diagnosticsAction: 'prev' },
+      repeat: { action: 'repeat', diagnosticsAction: 'repeat' },
+      seekrelative: { action: 'seekRelative', diagnosticsAction: 'seekrel', field: 'seconds' },
+      seekpercent: { action: 'seekPercent', diagnosticsAction: 'seekpct', field: 'percent' },
+    };
+    const definition = definitions[actionKey];
+    if (!definition) {
+      return errorResponse(
+        res,
+        400,
+        'action must be play, pause, stop, next, previous, repeat, seekRelative, or seekPercent',
+        'MOBILE_CONTROL_INVALID_REQUEST',
+      );
+    }
+
+    const allowedKeys = new Set(['action', ...(definition.field ? [definition.field] : [])]);
+    if (Object.keys(req.body).some((key) => !allowedKeys.has(key))) {
+      return errorResponse(res, 400, 'unsupported Home playback control field', 'MOBILE_CONTROL_INVALID_REQUEST');
+    }
+
+    let parameter = null;
+    if (definition.field === 'seconds') {
+      const value = req.body.seconds;
+      if (!Number.isInteger(value) || value === 0 || value < -600 || value > 600) {
+        return errorResponse(
+          res,
+          400,
+          'seconds must be a non-zero integer from -600 to 600',
+          'MOBILE_SEEK_OUT_OF_BOUNDS',
+        );
+      }
+      parameter = value;
+    } else if (definition.field === 'percent') {
+      const value = req.body.percent;
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+        return errorResponse(
+          res,
+          400,
+          'percent must be a number from 0 to 100',
+          'MOBILE_SEEK_OUT_OF_BOUNDS',
+        );
+      }
+      parameter = Math.round(value);
+    }
+
+    const diagnosticsBody = { action: definition.diagnosticsAction };
+    if (definition.field) diagnosticsBody[definition.field] = parameter;
+    const result = await internalFeatureRequest('/config/diagnostics/playback', {
+      method: 'POST',
+      body: diagnosticsBody,
+    });
+    if (!result?.ok) {
+      return mobileInternalFailure(
+        res,
+        result,
+        'Home playback control failed',
+        'MOBILE_CONTROL_FAILED',
+      );
+    }
+
+    const response = {
+      ok: true,
+      action: definition.action,
+    };
+    if (typeof result?.json?.repeatOn === 'boolean') response.repeatOn = result.json.repeatOn;
+    if (definition.field) response[definition.field] = parameter;
+    return res.json(response);
   }));
 
   app.get('/v1/mobile/now-playing', asyncRoute(async (req, res) => {

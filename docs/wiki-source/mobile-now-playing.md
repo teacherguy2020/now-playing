@@ -106,6 +106,52 @@ the provider without exposing provider credentials. An explicit non-available
 status tells native clients not to show stale text. Older servers may omit the
 status/provider siblings, in which case a non-empty `about.text` remains usable.
 
+## Home transport controls
+
+The P0 Server capability for native Home transport is a single typed,
+bearer-authenticated route:
+
+```http
+POST /v1/mobile/now-playing/control
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+```
+
+The request body is one of these forms:
+
+```json
+{"action":"play"}
+{"action":"pause"}
+{"action":"stop"}
+{"action":"next"}
+{"action":"previous"}
+{"action":"repeat"}
+{"action":"seekRelative","seconds":-30}
+{"action":"seekPercent","percent":50}
+```
+
+`seekRelative.seconds` must be a non-zero integer from `-600` through `600`.
+`seekPercent.percent` must be a finite number from `0` through `100`; the
+Server rounds it to the whole percentage accepted by the existing playback
+authority. Unknown fields, raw MPD paths, renderer URLs, and Track-Key-only
+requests are rejected. `previous` is translated to the existing server-side
+`prev` action, and `repeat` toggles the existing Home repeat mode.
+
+Success responses contain only the normalized action and safe state:
+
+```json
+{"ok":true,"action":"seekRelative","seconds":-30}
+{"ok":true,"action":"repeat","repeatOn":true}
+```
+
+The route delegates to the existing guarded playback authority, so it does
+not release or take over Qobuz Connect. If Qobuz owns playback, the response
+is `409` with
+`code: "HOME_PLAYBACK_OWNERSHIP_CONFLICT"` and
+`source: "qobuz-connect"`; the client must call the explicit
+`POST /v1/mobile/qobuz-connect/release` contract first and retry after
+confirmed release. Existing web/controller Track-Key routes remain unchanged.
+
 ## Current-track controls
 
 The native client may read and change favorite/rating state through the same
@@ -415,4 +461,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-20 18:54 America/Chicago*
+*Last reviewed: 2026-10-20 19:25 America/Chicago*

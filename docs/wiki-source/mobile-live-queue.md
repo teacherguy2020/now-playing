@@ -44,13 +44,15 @@ routes and does not call raw `/mpd/*` or `/config/*` queue endpoints.
 | --- | --- | --- |
 | GET | `/v1/mobile/queue` | Read current MPD queue and state |
 | GET | `/v1/mobile/next-up` | Read the target-aware single Next Up item |
+| POST | `/v1/mobile/now-playing/control` | Home moOde transport: play, pause, stop, next, previous, repeat, and bounded seek |
 | POST | `/v1/mobile/queue/items/:queueItemId/play` | Play one queue item on home moOde |
 | POST | `/v1/mobile/queue/items/:queueItemId/vibe` | Start a seeded Vibe from one eligible local queue item |
+| POST | `/v1/mobile/queue-wizard/vibe` | Start a seeded Vibe from a canonical `trackId` |
 | GET | `/v1/mobile/vibe/jobs/:jobId` | Read sanitized progress for a mobile-started Vibe job |
 | DELETE | `/v1/mobile/queue/items/:queueItemId` | Remove one item |
 | POST | `/v1/mobile/queue/items/:queueItemId/delete-below` | Keep the selected item and remove every later Home moOde queue item |
 | POST | `/v1/mobile/queue/items/:queueItemId/move` | Move one item to a 1-based position |
-| POST | `/v1/mobile/queue/actions` | `shuffle`, `shufflequeue`, `crop`, `clear`, or `vibe` |
+| POST | `/v1/mobile/queue/actions` | `shuffle`, `shufflequeue`, `undoshuffle`, `crop`, `clear`, or `vibe` |
 | GET | `/v1/mobile/endless-vibe` | Read the shared Endless Vibe setting and safe job state |
 | POST | `/v1/mobile/endless-vibe` | Enable or disable the shared Endless Vibe setting |
 
@@ -65,6 +67,23 @@ fixed, disables MPD random mode, and returns the reordered queue so Alexa's
 next-track order and the native Live Queue display remain aligned. The ordinary
 `shuffle` action is the same physical queue operation; it is retained as the
 normal mobile/action name, while `shufflequeue` remains a compatibility alias.
+
+The `undoshuffle` action restores the last physical upcoming-only shuffle
+through the same guarded diagnostics path:
+
+```http
+POST /v1/mobile/queue/actions
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"action":"undoshuffle"}
+```
+
+It is a one-level, process-local undo. A queue reorder or addition invalidates
+the snapshot; compatible deletions are reconciled. The response returns the
+sanitized refreshed queue and `undoAvailable`. Qobuz ownership is checked by
+the existing Home playback guard; the route never releases or takes over a
+Qobuz session.
 
 Queue item IDs are opaque, signed handles for a current queue snapshot. MPD
 song IDs, positions used internally, file names, filesystem paths, and secrets
@@ -102,6 +121,33 @@ The response includes safe display fields only:
 }
 ```
 
+## Explicit canonical Vibe seed
+
+The bearer mobile Queue Wizard adapter accepts an explicit canonical catalog
+seed without exposing the web/admin Vibe route:
+
+```http
+POST /v1/mobile/queue-wizard/vibe
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"trackId":"trk_opaque_id","targetQueue":12,"playNow":true,"keepPlaying":true}
+```
+
+`trackId` is resolved against the current Server catalog. The Server derives
+the artist/title seed and invokes the existing Queue Wizard seeded builder,
+preserving its queue-size, play-now, and keep-playing semantics. The accepted
+response is sanitized:
+
+```json
+{"ok":true,"accepted":true,"jobId":"vibe_job_opaque","trackId":"trk_opaque_id","targetQueue":12}
+```
+
+`targetQueue` must be an integer from 1 through 200. The client cannot submit
+artist/title text, a file path, an MPD ID, a renderer URL, or a Track Key.
+The no-`trackId` form remains as a compatibility adapter for older mobile
+callers that seed from the current Home track; new native migration work must
+use the canonical-ID form.
 ## Next Up parity
 
 The native iPhone and CarPlay surfaces use `/v1/mobile/next-up` for the single
@@ -288,7 +334,8 @@ logs, file paths, or MPD identifiers.
 
 The native device target has a separate local Endless Vibe preference. It does
 not use the server-global Endless Vibe setting or mutate the Home moOde queue.
-The iOS model starts the existing Track-Key-protected seeded preview before the
+The iOS model currently starts the existing Track-Key-protected seeded preview
+before the
 native queue reaches exhaustion, resolves candidates back to canonical mobile
 track IDs, and replaces only future This iPhone/This iPad queue items. The
 device preference is stored in iOS local settings; the current implementation
@@ -297,12 +344,15 @@ the device.
 
 ## Home moOde transport detail
 
-The native Home moOde play/pause control sends the named action `toggle` to
-the existing server-side playback route. The server must translate that
-action to moOde's supported command endpoint name, `toggle_play_pause`;
-`toggle` is not an MPD command and moOde can return HTTP 200 while embedding
-the resulting unknown-command error in the response body. The server checks
-that response before reporting the native action as sent.
+The P0 Server transport route is `POST /v1/mobile/now-playing/control`. It
+accepts `play`, `pause`, `stop`, `next`, `previous`, and repeat-toggle actions
+plus `seekRelative.seconds` in the inclusive range -600..600 and
+`seekPercent.percent` in the inclusive range 0..100. It delegates to the
+existing guarded Home playback authority, maps `previous` to the existing
+server-side `prev` action, and returns no raw command or status text. It
+returns `409 HOME_PLAYBACK_OWNERSHIP_CONFLICT` while Qobuz Connect owns the
+receiver; the client must use the explicit Qobuz release contract first.
+Existing Track-Key web/controller routes are retained.
 
 ## Playback-target queue handoff
 
@@ -350,4 +400,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-20 18:54 America/Chicago*
+*Last reviewed: 2026-10-20 19:25 America/Chicago*

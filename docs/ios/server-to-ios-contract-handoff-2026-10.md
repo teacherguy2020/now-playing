@@ -1,6 +1,6 @@
 # Sonuvi Server → Native iOS contract handoff
 
-**Status:** Server-side audit input; no iOS repository changes included
+**Status:** P0 Server bearer capabilities implemented in source; no iOS repository changes included
 **Verified:** 2026-10-20, America/Chicago
 **Server target:** Sonuvi Server deployment target (installation-specific host
 and path intentionally omitted)
@@ -30,8 +30,11 @@ architecture without presenting that future as implemented.
 | Contract | Request | Current Server boundary |
 | --- | --- | --- |
 | Current state | `GET /v1/mobile/now-playing` | Source-aware sanitized Home state; inspect `source`, `isUpnp`, `isStream`, `isPodcast`, queue fields, and `track` rather than calling `/now-playing` directly |
+| Home transport | `POST /v1/mobile/now-playing/control` | Bearer-only typed Home play/pause/stop/next/previous/repeat and bounded relative/percentage seek; delegates to the guarded Server authority |
 | Next Up | `GET /v1/mobile/next-up` | Target-aware successor; Home moOde/Alexa and native-device queues do not share one inferred position |
 | Home queue | `GET /v1/mobile/queue` plus `/queue/items/:queueItemId/*` and `/queue/actions` | Bearer queue handles are opaque and current-snapshot scoped; mutations affect Home moOde/MPD only and require refresh after mutation |
+| Physical shuffle undo | `POST /v1/mobile/queue/actions` with `{"action":"undoshuffle"}` | Restores the guarded one-level physical upcoming-queue shuffle when the queue snapshot is still valid; returns a sanitized queue |
+| Explicit Vibe seed | `POST /v1/mobile/queue-wizard/vibe` with canonical `trackId` | Resolves the canonical catalog record and reuses Queue Wizard's seeded builder; returns only an opaque job handle and safe request identity |
 | Audio diagnostics | `GET /v1/mobile/audio-info` | Safe `audio-info.v1` rows/provenance; configured output, decoded PCM, and measured ALSA hardware output are distinct |
 | Local bytes | `GET /v1/mobile/local-source/manifest` | Maps canonical IDs to relative local availability (`relativePath`/`contentPath` where present); stale/disconnected bytes are cache misses, not identity changes |
 | Native history | `POST /v1/mobile/playback/events` | Body requires canonical `trackId`, valid `sessionId`, and `state` in `start`, `playing`, `progress`, `pause`, `stop`, `ended`; progress fields are optional |
@@ -40,6 +43,60 @@ architecture without presenting that future as implemented.
 Native playback events are resolved by the Server and recorded with source
 `ios-device` and session identity `mobile:<sessionId>`. The Server decides
 qualification, deduplication, local history, and Last.fm submission.
+
+### P0 Home controls and Queue Wizard seed
+
+The new Server-side migration boundary is:
+
+```http
+POST /v1/mobile/now-playing/control
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"action":"play"}
+{"action":"pause"}
+{"action":"stop"}
+{"action":"next"}
+{"action":"previous"}
+{"action":"repeat"}
+{"action":"seekRelative","seconds":-30}
+{"action":"seekPercent","percent":50}
+```
+
+Relative seek accepts only a non-zero integer from `-600` through `600`.
+Percentage seek accepts a finite number from `0` through `100` and is
+rounded by the Server. Unknown fields and non-object bodies are rejected.
+Responses contain no raw command, MPD path, renderer URL, or Track Key.
+
+The Home route delegates to the existing Server playback-authority guard. It
+does not release or take over Qobuz Connect. While Qobuz owns the receiver it
+returns `409` with `code: "HOME_PLAYBACK_OWNERSHIP_CONFLICT"` and
+`source: "qobuz-connect"`. Native code must call
+`POST /v1/mobile/qobuz-connect/release`, wait for confirmed inactive ownership,
+then retry the Home action.
+
+For an explicit Vibe seed, native code sends:
+
+```http
+POST /v1/mobile/queue-wizard/vibe
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"trackId":"trk_opaque_id","targetQueue":12,"playNow":true,"keepPlaying":true}
+```
+
+The Server resolves `trackId`, derives artist/title internally, and invokes the
+existing Queue Wizard seeded builder. `targetQueue` is an integer from 1
+through 200. The `202` response is sanitized:
+
+```json
+{"ok":true,"accepted":true,"jobId":"vibe_job_opaque","trackId":"trk_opaque_id","targetQueue":12}
+```
+
+The no-`trackId` mobile Vibe form remains as a compatibility adapter for older
+callers that seed from the current Home track. New native migration work must
+use the canonical-ID form. The iOS repository is intentionally unchanged in
+this Server-only phase.
 
 ### Qobuz Connect
 
@@ -119,6 +176,9 @@ from `now-playing-ios/AGENTS.md`, `docs/architecture.md`, and
 
 - Confirm every native request uses the mobile bearer boundary and never a
   Track Key or raw integration URL.
+- Replace legacy native calls to Track-Key playback and seeded-Vibe routes with
+  the P0 contracts above during the separate iOS migration; this handoff does
+  not include that client change.
 - Confirm the client treats `source`/ownership fields as authority signals,
   not titles/artwork/paths.
 - Confirm Qobuz control uses the required current-track/CAS fields and release
@@ -130,4 +190,4 @@ from `now-playing-ios/AGENTS.md`, `docs/architecture.md`, and
 - Confirm native progress events use stable session IDs and do not submit
   Last.fm credentials or duplicate scrobbles.
 
-*Prepared: 2026-10-20 18:54 America/Chicago*
+*Prepared: 2026-10-20 19:25 America/Chicago*

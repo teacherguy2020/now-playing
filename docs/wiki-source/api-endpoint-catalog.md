@@ -614,6 +614,8 @@ Core families currently used by the native client:
   ticketed native radio streams;
 - `GET /v1/mobile/now-playing`, `GET /v1/mobile/next-up`,
   `GET /v1/mobile/audio-info`, and bearer current-track favorite/rating writes;
+- `POST /v1/mobile/now-playing/control` for Home moOde transport and
+  `POST /v1/mobile/queue-wizard/vibe` for explicit canonical-ID Vibe seeds;
 - `GET /v1/mobile/home/rows` and `POST /v1/mobile/home/profile` for the
   twelve ordered Home discovery sources;
 - playlists, ordered entries, playlist artwork, and
@@ -630,6 +632,51 @@ Core families currently used by the native client:
 - `GET /v1/mobile/local-source/manifest` and
   `POST /v1/mobile/playback/events` for canonical SSD/cache resolution and
   native listening-history observation.
+
+### P0 Home transport and explicit Vibe contracts
+
+`POST /v1/mobile/now-playing/control` requires a `mobile-api` bearer session
+and accepts exactly one typed action body:
+
+```json
+{"action":"play"}
+{"action":"pause"}
+{"action":"stop"}
+{"action":"next"}
+{"action":"previous"}
+{"action":"repeat"}
+{"action":"seekRelative","seconds":-30}
+{"action":"seekPercent","percent":50}
+```
+
+Relative seek is a non-zero integer in `-600..600`; percentage seek is a
+finite number in `0..100` and is rounded to a whole percentage. The response
+contains only `ok`, the normalized action, the requested seek value where
+applicable, and the verified `repeatOn` boolean for repeat. The route calls
+the existing `/config/diagnostics/playback` authority internally, so it does
+not accept a raw MPD path, renderer URL, or `x-track-key` credential and it
+does not release Qobuz. An active Qobuz owner returns `409` with
+`HOME_PLAYBACK_OWNERSHIP_CONFLICT`; callers must use the explicit mobile
+Qobuz release contract before retrying a Home action. Existing web/controller
+routes are retained.
+
+`POST /v1/mobile/queue-wizard/vibe` retains its current-track compatibility
+adapter and additionally accepts the explicit canonical form:
+```json
+{"trackId":"trk_opaque_id","targetQueue":12,"playNow":true,"keepPlaying":true}
+```
+The Server resolves `trackId` through the canonical mobile catalog, derives
+the artist/title seed, and calls the existing Queue Wizard seeded builder.
+`targetQueue` is an integer from `1` through `200`; responses are `202` with
+only `ok`, `accepted`, `jobId`, `trackId`, and `targetQueue`. Artist/title
+text, files, MPD IDs, renderer URLs, and Track Keys are not accepted from the
+mobile caller.
+
+`POST /v1/mobile/queue/actions` adds the physical `undoshuffle` action beside
+`shuffle` and `shufflequeue`. It delegates to the same guarded diagnostics
+shuffle snapshot, returns the sanitized refreshed queue plus
+`undoAvailable`, and fails closed if the queue changed or Qobuz owns Home
+playback.
 
 ### Qobuz Connect contract
 
@@ -726,4 +773,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-10-20 18:54 America/Chicago
+Last updated: 2026-10-20 19:25 America/Chicago
