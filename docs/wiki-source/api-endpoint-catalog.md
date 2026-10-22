@@ -673,6 +673,16 @@ An active Qobuz or UPnP owner returns `409`
 must use the explicit mobile ownership contract before retrying a Home action.
 Existing web/controller routes are retained.
 
+`GET /v1/mobile/queue` keeps its full current-item-first response when
+`offset` and `limit` are omitted. Supplying either parameter requests a
+zero-based ordered window (`limit` defaults to `50`, bounded to `1..100`, and
+`offset` is bounded to `0..1000000`). The response adds `offset`, `limit`,
+window `count`, authoritative `total`, `headPos`, `currentPosition`, opaque
+`revision`/`fingerprint`, and `hasMoreBefore`/`hasMoreAfter`. Paged queue items
+are ordered by their one-based queue position; invalid bounds return `400`
+`MOBILE_QUEUE_PAGING_INVALID_REQUEST`. The revision changes when queue
+contents or order changes, allowing browser clients to invalidate cached pages.
+
 `POST /v1/mobile/queue-wizard/vibe` retains its current-track compatibility
 adapter and additionally accepts the explicit canonical form:
 ```json
@@ -807,4 +817,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-10-20 22:51 America/Chicago
+Last updated: 2026-10-22 07:41 America/Chicago

@@ -394,6 +394,51 @@ function mapItem(source, raw, context, index) {
   return null;
 }
 
+function buildMobileHomeRow(source, result, context) {
+  const definition = mobileHomeRowDefinition(source);
+  if (!definition) return null;
+  const items = sourceItems(result?.payload, source)
+    .map((raw, index) => mapItem(source, raw, context, index))
+    .filter(Boolean);
+  return {
+    id: source,
+    title: definition.title,
+    provider: definition.provider,
+    source,
+    available: result?.ok !== false,
+    items,
+  };
+}
+
+/// A bounded local-history payload for native features that need recent
+/// tracks but must not depend on whether the corresponding Home shelf is
+/// visible in the user's controller profile.
+export function buildMobileLocalRecentHistory({
+  sourcePayload,
+  catalog,
+  playlistSummaries = [],
+  baseUrl = '',
+  makeItemId,
+  artworkUrlFor,
+  podcastIdFor,
+  radioStationIdFor,
+} = {}) {
+  const playlistByName = new Map(
+    (Array.isArray(playlistSummaries) ? playlistSummaries : [])
+      .filter((row) => row?.name)
+      .map((row) => [normalized(row.name), row]),
+  );
+  return buildMobileHomeRow('local-recenttracks', sourcePayload, {
+    catalog,
+    playlistByName,
+    baseUrl,
+    makeItemId,
+    artworkUrlFor,
+    podcastIdFor,
+    radioStationIdFor,
+  });
+}
+
 export function buildMobileHomeRows({
   profile,
   sourcePayloads = new Map(),
@@ -422,21 +467,9 @@ export function buildMobileHomeRows({
   };
 
   const rows = safeProfile.showRecent
-    ? safeProfile.recentRows.map((source) => {
-      const definition = mobileHomeRowDefinition(source);
-      const result = sourcePayloads.get(source) || {};
-      const items = sourceItems(result.payload, source)
-        .map((raw, index) => mapItem(source, raw, context, index))
-        .filter(Boolean);
-      return {
-        id: source,
-        title: definition.title,
-        provider: definition.provider,
-        source,
-        available: result.ok !== false,
-        items,
-      };
-    })
+    ? safeProfile.recentRows
+      .map((source) => buildMobileHomeRow(source, sourcePayloads.get(source) || {}, context))
+      .filter(Boolean)
     : [];
 
   return { profile: safeProfile, rows };

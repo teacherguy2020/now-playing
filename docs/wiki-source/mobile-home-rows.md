@@ -105,6 +105,13 @@ track/album/artist/playlist IDs are server-issued. Raw MPD file values,
 filesystem paths, MPD song IDs, Track Keys, and provider credentials are not
 returned.
 
+The response also includes `localRecentHistory`: a bounded, sanitized,
+row-shaped local-history payload outside `rows`. The server fetches it even
+when `local-recenttracks` is not selected in `recentRows`, so native features
+such as **Recent Genres** can use recent tracks without requiring a visible
+Local Recently Played shelf. It may be unavailable or empty when no usable
+local listening history exists.
+
 ## Supported sources
 
 The source vocabulary follows the tablet controller:
@@ -220,4 +227,4 @@ opaque IDs, artwork proxy URLs, and the absence of MPD paths in serialized
 JSON. The iOS project’s Swift tests and signed device build must remain green
 when this endpoint changes.
 
-*Last reviewed: 2026-10-02 18:45 America/Chicago*
+*Last reviewed: 2026-10-22 07:41 America/Chicago*

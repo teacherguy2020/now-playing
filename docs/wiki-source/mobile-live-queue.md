@@ -122,6 +122,48 @@ The response includes safe display fields only:
 }
 ```
 
+## Queue paging and revision metadata
+
+`GET /v1/mobile/queue` preserves the legacy full response when neither
+`offset` nor `limit` is supplied. In that form the complete queue remains
+current-item-first, as existing clients expect. Browser clients may request a
+bounded, zero-based ordered window:
+
+```http
+GET /v1/mobile/queue?offset=50&limit=50
+Authorization: Bearer <mobile-session-token>
+```
+
+If either parameter is present, a missing `offset` defaults to `0` and a
+missing `limit` defaults to `50`. `limit` is bounded to `1..100` and `offset`
+to `0..1000000`; invalid values return `400`
+`MOBILE_QUEUE_PAGING_INVALID_REQUEST`. A paged response returns items in
+ascending queue position and includes authoritative window metadata:
+
+```json
+{
+  "offset": 50,
+  "limit": 50,
+  "count": 50,
+  "total": 172,
+  "headPos": 53,
+  "currentPosition": 53,
+  "revision": "qrev_opaque",
+  "fingerprint": "qrev_opaque",
+  "hasMoreBefore": true,
+  "hasMoreAfter": true,
+  "items": []
+}
+```
+
+`count` is the number of items in this response window; `total` is the
+authoritative queue length. `headPos` and `currentPosition` are the current
+one-based MPD queue position, or `null` when unavailable. `revision` and
+`fingerprint` are opaque stable values for the ordered queue contents; a queue
+content/order change produces a new value so clients can invalidate cached
+pages. Paged reads are read-only and retain the same bearer authorization and
+sanitized item boundary as the full response.
+
 ## Explicit canonical Vibe seed
 
 The bearer mobile Queue Wizard adapter accepts an explicit canonical catalog
@@ -456,4 +498,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-20 22:51 America/Chicago*
+*Last reviewed: 2026-10-22 07:41 America/Chicago*

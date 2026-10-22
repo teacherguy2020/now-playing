@@ -30,6 +30,7 @@ import {
 } from '../lib/mobile-playlists.mjs';
 import { isPodcastPlaylist } from '../lib/playlist-classification.mjs';
 import {
+  buildMobileLocalRecentHistory,
   buildMobileHomeRows,
   mobileHomeSourcePath,
   sanitizeMobileHomeProfile,
@@ -72,6 +73,7 @@ const REFRESH_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 const MEDIA_TICKET_TTL_MS = 60 * 60 * 1000;
 const RADIO_TICKET_TTL_MS = 30 * 60 * 1000;
 const MAX_PAGE_SIZE = 100;
+const MAX_QUEUE_OFFSET = 1_000_000;
 
 function text(value) {
   return String(value || '').trim();
@@ -440,6 +442,24 @@ function pageArgs(query = {}) {
   const limit = Math.max(1, Math.min(MAX_PAGE_SIZE, Number(query.limit || 50) || 50));
   const offset = Math.max(0, Number(query.offset || query.cursor || 0) || 0);
   return { limit, offset };
+}
+
+function queuePageArgs(query = {}) {
+  const hasOffset = Object.prototype.hasOwnProperty.call(query || {}, 'offset');
+  const hasLimit = Object.prototype.hasOwnProperty.call(query || {}, 'limit');
+  if (!hasOffset && !hasLimit) {
+    return { paged: false, offset: 0, limit: null };
+  }
+
+  const offset = hasOffset ? Number(query.offset) : 0;
+  const limit = hasLimit ? Number(query.limit) : 50;
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > MAX_QUEUE_OFFSET) {
+    return { error: 'queue offset must be an integer from 0 through 1000000' };
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
+    return { error: `queue limit must be an integer from 1 through ${MAX_PAGE_SIZE}` };
+  }
+  return { paged: true, offset, limit };
 }
 
 function page(items, { limit, offset }) {
@@ -881,7 +901,8 @@ export function registerMobileRoutes(app, deps = {}) {
     const profile = sanitizeMobileHomeProfile(profileResult?.json?.profile || {});
     const baseUrl = requestBaseUrl(req, mobileBaseUrl);
     const sourcePayloads = new Map();
-    await Promise.all(profile.recentRows.map(async (source) => {
+    const sourceIDs = [...new Set([...profile.recentRows, 'local-recenttracks'])];
+    await Promise.all(sourceIDs.map(async (source) => {
       if (source === 'queue') {
         const queue = await loadMobileQueue(req).catch(() => null);
         sourcePayloads.set(source, {
@@ -895,7 +916,7 @@ export function registerMobileRoutes(app, deps = {}) {
         ? await fetchInternalJson(pathname).catch(() => null)
         : null;
       sourcePayloads.set(source, {
-        ok: result?.ok !== false,
+        ok: Boolean(result?.ok),
         payload: result?.json || {},
       });
     }));
@@ -903,7 +924,7 @@ export function registerMobileRoutes(app, deps = {}) {
     const catalog = await loadCatalog();
     const playlistRows = await loadMobilePlaylists();
     const playlistSummaries = playlistRows.map((row) => mobilePlaylistSummary(row, catalog, baseUrl));
-    return buildMobileHomeRows({
+    const context = {
       profile,
       sourcePayloads,
       catalog,
@@ -925,10 +946,18 @@ export function registerMobileRoutes(app, deps = {}) {
         rememberOpaqueEntry(radioEntries, id, value);
         return id;
       },
-    });
+    };
+    const home = buildMobileHomeRows(context);
+    return {
+      ...home,
+      localRecentHistory: buildMobileLocalRecentHistory({
+        ...context,
+        sourcePayload: sourcePayloads.get('local-recenttracks'),
+      }),
+    };
   };
 
-  const loadMobileQueue = async (req) => {
+  const loadMobileQueue = async (req, paging = { paged: false, offset: 0, limit: null }) => {
     if (!mpdQueryRaw) throw new Error('mobile queue is not configured');
     const [playlistRaw, statusRaw] = await Promise.all([
       mpdQueryRaw('playlistinfo'),
@@ -1105,15 +1134,40 @@ export function registerMobileRoutes(app, deps = {}) {
     const displayItems = currentIndex > 0
       ? [items[currentIndex], ...items.slice(currentIndex + 1), ...items.slice(0, currentIndex)]
       : items;
+    const orderedItems = [...items].sort((left, right) => {
+      const positionDifference = Number(left.position) - Number(right.position);
+      return positionDifference || String(left.id).localeCompare(String(right.id));
+    });
+    const queueRevision = createMobileTrackId({
+      secret: trackIdSecret,
+      trackIdentity: `mobile-queue-v1:${JSON.stringify(orderedItems.map((item) => ({
+        position: item.position,
+        songId: Number.isFinite(item.serverSongId) ? item.serverSongId : null,
+        file: text(item.file),
+      })))}`,
+    }).replace(/^trk_/, 'qrev_');
+    const total = orderedItems.length;
+    const responseItems = paging.paged
+      ? orderedItems.slice(paging.offset, paging.offset + paging.limit)
+      : displayItems;
+    const headPos = Number.isFinite(currentPosition) ? currentPosition + 1 : null;
     return {
-      headPos: Number.isFinite(currentPosition) ? currentPosition + 1 : null,
+      offset: paging.paged ? paging.offset : 0,
+      limit: paging.paged ? paging.limit : total,
+      total,
+      headPos,
+      currentPosition: headPos,
+      revision: queueRevision,
+      fingerprint: queueRevision,
+      hasMoreBefore: paging.paged ? paging.offset > 0 : false,
+      hasMoreAfter: paging.paged ? paging.offset + responseItems.length < total : false,
       playbackState: text(status.state),
       randomOn: mpdBoolean(status.random),
       repeatOn: mpdBoolean(status.repeat),
       singleOn: mpdBoolean(status.single),
       consumeOn: mpdBoolean(status.consume),
       crossfadeSec: Number(status.crossfade || 0) || 0,
-      items: displayItems,
+      items: responseItems,
     };
   };
 
@@ -3502,7 +3556,11 @@ export function registerMobileRoutes(app, deps = {}) {
   // the client.
   app.get('/v1/mobile/queue', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
-    const queue = await loadMobileQueue(req);
+    const paging = queuePageArgs(req?.query);
+    if (paging.error) {
+      return errorResponse(res, 400, paging.error, 'MOBILE_QUEUE_PAGING_INVALID_REQUEST');
+    }
+    const queue = await loadMobileQueue(req, paging);
     return queueResponse(res, 'list', queue);
   }));
 

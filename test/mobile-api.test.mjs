@@ -1231,6 +1231,51 @@ test('mobile home discovery rows require a bearer session, not a Track Key', asy
   assert.equal(trackKeyOnly.statusCode, 401);
 });
 
+test('mobile home exposes local recent history without displaying its shelf', async () => {
+  const profile = {
+    recentRows: ['albums', 'playlists', 'podcasts', 'radio'],
+    recentCount: 18,
+  };
+  const calls = [];
+  const app = registerFixture({
+    fetchInternalJson: async (pathname) => {
+      calls.push(pathname);
+      if (pathname === '/config/controller-profile') {
+        return { ok: true, json: { profile } };
+      }
+      if (pathname === '/config/listening-history/recent-tracks?limit=18') {
+        return {
+          ok: true,
+          json: {
+            items: [{
+              title: 'First', artist: 'Test Artist', album: 'Test Album',
+              file: 'USB/SamsungMoode/Test Album/01 - First.mp3',
+            }],
+          },
+        };
+      }
+      return { ok: true, json: { items: [] } };
+    },
+  });
+  const session = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), session);
+
+  const response = createResponse();
+  await app.routes.get('GET /v1/mobile/home/rows')?.(request({
+    headers: { authorization: `Bearer ${session.body.accessToken}` },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body.rows.map((row) => row.id), profile.recentRows);
+  assert.equal(response.body.localRecentHistory.id, 'local-recenttracks');
+  assert.equal(response.body.localRecentHistory.items[0].track.genre, 'Test');
+  assert.ok(calls.includes('/config/listening-history/recent-tracks?limit=18'));
+  assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode/);
+});
+
 test('mobile home shelf settings save ordered row sources through the bearer boundary', async () => {
   const calls = [];
   const currentProfile = {

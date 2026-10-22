@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { buildMobileCatalog } from '../src/lib/mobile-track-identity.mjs';
 import {
+  buildMobileLocalRecentHistory,
   buildMobileHomeRows,
   mobileHomeSourcePath,
   sanitizeMobileHomeProfile,
@@ -149,4 +150,27 @@ test('mobile home rows resolve album and artist destinations without source file
   assert.equal(result.rows[1].items[0].artistItem.artist, 'Artist');
   assert.equal(result.rows[2].items[0].albumItem.album, 'Album');
   assert.equal(result.rows[2].items[0].track.title, 'Track');
+});
+
+test('local recent history is available independently from selected visible shelves', () => {
+  const built = catalog();
+  const localRecentHistory = buildMobileLocalRecentHistory({
+    catalog: built,
+    baseUrl: 'http://nowplaying.local:3101',
+    makeItemId: ({ source, kind, identity }) => `itm_${source}_${kind}_${identity}`,
+    sourcePayload: {
+      ok: true,
+      payload: {
+        items: [{
+          title: 'Track', artist: 'Artist', album: 'Album',
+          file: 'USB/Music/Artist/Album/01 - Track.mp3',
+        }],
+      },
+    },
+  });
+
+  assert.equal(localRecentHistory.id, 'local-recenttracks');
+  assert.equal(localRecentHistory.available, true);
+  assert.equal(localRecentHistory.items[0].track.genre, 'Rock');
+  assert.doesNotMatch(JSON.stringify(localRecentHistory), /USB\/Music/);
 });

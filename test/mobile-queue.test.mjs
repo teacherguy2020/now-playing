@@ -479,6 +479,100 @@ test('mobile queue includes canonical per-item ratings without exposing MPD iden
   assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|Fragile\.flac|serverSongId|songid/i);
 });
 
+test('mobile queue pages ordered windows and exposes a stable opaque revision', async () => {
+  const file = fixtureIndex().tracks[0].file;
+  const queueRows = Array.from({ length: 5 }, (_, index) => ({
+    file,
+    pos: String(index),
+    id: String(100 + index),
+  }));
+  const commands = [];
+  const app = registerFixture(async (command) => {
+    commands.push(command);
+    if (command === 'playlistinfo') {
+      return `OK MPD 0.23.15\n${queueRows
+        .map((row) => Object.entries(row).map(([key, value]) => `${key}: ${value}`).join('\n'))
+        .join('\n')}\nOK\n`;
+    }
+    if (command === 'status') {
+      return 'state: play\nsong: 2\nsongid: 102\nplaylistlength: 5\nrandom: 0\nrepeat: 0\nconsume: 0\ncrossfade: 0\nOK\n';
+    }
+    return 'OK\n';
+  });
+
+  const unauthorized = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    query: { offset: 1, limit: 2 },
+  }), unauthorized);
+  assert.equal(unauthorized.statusCode, 401);
+  assert.deepEqual(commands, []);
+
+  const invalid = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    headers: sessionHeaders(),
+    query: { offset: 0, limit: 101 },
+  }), invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(invalid.body.code, 'MOBILE_QUEUE_PAGING_INVALID_REQUEST');
+  assert.deepEqual(commands, []);
+
+  const invalidOffset = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    headers: sessionHeaders(),
+    query: { offset: -1, limit: 2 },
+  }), invalidOffset);
+  assert.equal(invalidOffset.statusCode, 400);
+  assert.equal(invalidOffset.body.code, 'MOBILE_QUEUE_PAGING_INVALID_REQUEST');
+  assert.deepEqual(commands, []);
+
+  const firstPage = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    headers: sessionHeaders(),
+    query: { offset: 1, limit: 2 },
+  }), firstPage);
+  assert.equal(firstPage.statusCode, 200);
+  assert.deepEqual(firstPage.body.queue.items.map((item) => item.position), [2, 3]);
+  assert.equal(firstPage.body.queue.count, 2);
+  assert.equal(firstPage.body.queue.total, 5);
+  assert.equal(firstPage.body.queue.offset, 1);
+  assert.equal(firstPage.body.queue.limit, 2);
+  assert.equal(firstPage.body.queue.headPos, 3);
+  assert.equal(firstPage.body.queue.currentPosition, 3);
+  assert.equal(firstPage.body.queue.items[1].isCurrent, true);
+  assert.equal(firstPage.body.queue.hasMoreBefore, true);
+  assert.equal(firstPage.body.queue.hasMoreAfter, true);
+  assert.match(firstPage.body.queue.revision, /^qrev_[A-Za-z0-9_-]+$/);
+  assert.equal(firstPage.body.queue.fingerprint, firstPage.body.queue.revision);
+  assert.doesNotMatch(JSON.stringify(firstPage.body), /SamsungMoode|First\.mp3|serverSongId|songid/i);
+
+  const full = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    headers: sessionHeaders(),
+  }), full);
+  assert.equal(full.statusCode, 200);
+  assert.deepEqual(full.body.queue.items.map((item) => item.position), [3, 4, 5, 1, 2]);
+  assert.equal(full.body.queue.count, 5);
+  assert.equal(full.body.queue.total, 5);
+  assert.equal(full.body.queue.hasMoreBefore, false);
+  assert.equal(full.body.queue.hasMoreAfter, false);
+  assert.equal(full.body.queue.revision, firstPage.body.queue.revision);
+
+  queueRows.push({ file, pos: '5', id: '105' });
+  const changed = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({
+    headers: sessionHeaders(),
+    query: { offset: 0, limit: 2 },
+  }), changed);
+  assert.equal(changed.statusCode, 200);
+  assert.equal(changed.body.queue.total, 6);
+  assert.notEqual(changed.body.queue.revision, firstPage.body.queue.revision);
+  assert.deepEqual(commands, [
+    'playlistinfo', 'status',
+    'playlistinfo', 'status',
+    'playlistinfo', 'status',
+  ]);
+});
+
 test('mobile queue disables ratings when the ratings feature is disabled', async () => {
   const ratingCalls = [];
   const app = registerFixture(async (command) => {
