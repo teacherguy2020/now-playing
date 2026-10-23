@@ -4,6 +4,8 @@
 
 *Sonuvi chooses the music. You choose the renderer.*
 
+[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/teacherguy2020/now-playing/1-overview)
+
 Sonuvi is a music platform that began as an enhancement layer for [moOde audio](https://moodeaudio.org/) and MPD. It combines richer playback controls, library tools, metadata, intelligent queues, displays, and integrations with web and native Apple-device experiences.
 
 moOde remains a core, dependable playback engine for Sonuvi. The wider goal is to make the listening experience less dependent on any one music library, controller, or output device.
