@@ -20,10 +20,13 @@
     html,body{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important}
     body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
-    #npCard{position:relative;overflow:hidden;border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.10);--npBlurBg:none}
-    #npCard::before{content:'';position:absolute;inset:0;background-image:var(--npBlurBg);background-size:cover;background-position:center;opacity:.72;pointer-events:none}
-    #npCard::after{content:'';position:absolute;inset:0;background:var(--np-blur-overlay);pointer-events:none}
+    #npCard{position:relative;overflow:hidden;border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.10);background:#070b13}
+    #npCard::before{content:none}
+    #npCard::after{content:'';position:absolute;inset:0;background:var(--np-blur-overlay);pointer-events:none;z-index:0}
     #npCard > *{position:relative;z-index:1}
+    #npCard > #npCardBg{position:absolute;inset:-24px;width:calc(100% + 48px);height:calc(100% + 48px);object-fit:cover;filter:blur(24px);opacity:.62;transform:scale(1.04);pointer-events:none;z-index:0;transition:opacity .18s ease}
+    #npCard > #npCardBg.npCardBgServerBlur{filter:none;transform:scale(1.01)}
+    #npCard > #npCardBg[hidden]{display:none}
     .title{font-weight:750;font-size:18px;margin-bottom:10px}
 
     .npTap{display:block;text-decoration:none;color:inherit;-webkit-touch-callout:none;touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -636,6 +639,7 @@
   <div id="kioskCanvas">
   <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
     <div class="card" id="npCard">
+      <img id="npCardBg" alt="" aria-hidden="true" hidden />
       <div class="title">Now Playing on moOde</div>
       <div class="np">
         <div class="artWrap" id="npArtWrap" aria-label="Album art (tap to flip)">
@@ -1490,6 +1494,7 @@
   let npCurrentRadioFavorite = false;
   let npQobuzActive = false;
   let npMotionReqToken = 0;
+  let npLastAlexaArtFile = "";
   let npRadioGridCache = { ts: 0, html: "" };
   let npRadioFavCache = { ts: 0, set: /* @__PURE__ */ new Set() };
   const setArtFlip = (flipped = false) => {
@@ -1740,7 +1745,19 @@
             if (spinEl) spinEl.hidden = true;
             artEl.src = "/icons/icon-192.png";
           };
-          artEl.src = art;
+          // Safari/iPad can retain the Alexa file while the mediated
+          // /art/current.jpg?v=... URL is still resolving. Match the shared
+          // browser surface's Alexa fallback and load the file-backed image
+          // directly, once per active Alexa file, when that file is present.
+          if (isAlexaMode && file) {
+            if (file !== npLastAlexaArtFile) {
+              artEl.src = "".concat(base, "/art/track_640.jpg?file=").concat(encodeURIComponent(file), "&_=").concat(Date.now());
+              npLastAlexaArtFile = file;
+            }
+          } else {
+            artEl.src = art;
+            npLastAlexaArtFile = "";
+          }
           const motionEl = document.getElementById("npArtMotion");
           const artFaceFront = artEl.closest(".artFaceFront");
           const myToken = ++npMotionReqToken;
@@ -1776,23 +1793,36 @@
             });
           }
         }
-        const npCardEl = document.getElementById("npCard");
+        const npCardBgEl = document.getElementById("npCardBg");
+        const alexaFileArtSource = isAlexaMode && file
+          ? "".concat(base, "/art/track_640.jpg?file=").concat(encodeURIComponent(file))
+          : "";
         let blurSig = "".concat(String(album || "").trim().toLowerCase(), "|").concat(String(artist || "").trim().toLowerCase(), "|").concat(String(globalThis.NPArt?.source(j) || art || ""));
-        let blurSrc = "";
-        try {
-          const au = new URL(String(art || ""), location.href);
-          const p = new URLSearchParams(au.search || "");
-          ["t", "ts", "v", "cache", "cacheBust", "_"].forEach((k) => p.delete(k));
-          au.search = p.toString() ? "?".concat(p.toString()) : "";
-          blurSrc = au.toString();
-        } catch {
-          blurSrc = String(art || "");
+        let blurSrc = alexaFileArtSource;
+        if (!blurSrc) {
+          try {
+            const au = new URL(String(art || ""), location.href);
+            const p = new URLSearchParams(au.search || "");
+            ["t", "ts", "v", "cache", "cacheBust", "_"].forEach((k) => p.delete(k));
+            au.search = p.toString() ? "?".concat(p.toString()) : "";
+            blurSrc = au.toString();
+          } catch {
+            blurSrc = String(art || "");
+          }
         }
         if (!String(blurSig || "").replace("|", "").trim()) blurSig = blurSrc;
-        if (npCardEl && blurSig !== npBlurSig) {
+        if (npCardBgEl && blurSig !== npBlurSig) {
           npBlurSig = blurSig;
-          const blurUrl = globalThis.NPArt?.background(j, { base }) || "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(blurSrc || art || "")), "&t=").concat(Date.now());
-          npCardEl.style.setProperty("--npBlurBg", 'url("'.concat(blurUrl, '")'));
+          const blurUrl = alexaFileArtSource
+            ? "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(alexaFileArtSource))
+            : (globalThis.NPArt?.background(j, { base }) || "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(blurSrc || art || "")), "&t=").concat(Date.now()));
+          // Use a real image layer instead of a pseudo-element. Safari/iPad
+          // has been reliable with the same direct file source used by the
+          // foreground image, while the CSS blur supplies the card backdrop.
+          npCardBgEl.classList.toggle("npCardBgServerBlur", !alexaFileArtSource);
+          npCardBgEl.onerror = () => { npCardBgEl.hidden = true; };
+          npCardBgEl.onload = () => { npCardBgEl.hidden = false; };
+          npCardBgEl.src = alexaFileArtSource || blurUrl;
         }
         const line1El = document.getElementById("line1");
         if (line1El) {

@@ -59,6 +59,16 @@ because MPD is reporting a different current item. `scripts/index-ui.js`,
 `scripts/hero-transport.js`, and the controller surfaces already preserve
 this separation.
 
+For browser surfaces that render an active Alexa file directly, the
+file-backed `/art/track_640.jpg?file=...` URL is an equivalent foreground
+fallback. It uses the same Alexa payload source and avoids depending on the
+mediated current-art URL while that payload is changing on Safari/iPad.
+The tablet surface uses that same file-backed source to request
+`/art/current_bg_640_blur.jpg` for its card background; it must not use the
+ordinary MPD current-art source during Alexa Mode. Its Safari/iPad backdrop is
+a real image layer with CSS blur rather than a pseudo-element, so a working
+foreground file cannot be hidden by browser-specific background painting.
+
 ## Surface ownership
 
 | Surface | Primary implementation | Shared-art requirement |
