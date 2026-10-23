@@ -8,6 +8,8 @@ Sonuvi is a music platform that began as an enhancement layer for [moOde audio](
 
 moOde remains a core, dependable playback engine for Sonuvi. The wider goal is to make the listening experience less dependent on any one music library, controller, or output device.
 
+![Sonuvi iOS app](./docs/images/readme-sonuvi-ios.png)
+
 ![Sonuvi dashboard](./docs/images/readme-index.jpg)
 
 ![Sonuvi controller](./docs/images/controller.jpeg)
